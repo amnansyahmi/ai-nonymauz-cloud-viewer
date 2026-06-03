@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A lightweight LiteLLM/OpenAI-compatible model tester for AI Nonymauz." />
+    <title>AI Nonymauz Model Tester</title>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">LiteLLM tester</p>
+          <h1>AI Nonymauz Model Tester</h1>
+          <p class="subtitle">Test your LiteLLM proxy with OpenAI-compatible chat completions, streaming, custom models, system prompts, and quick latency stats.</p>
+        </div>
+        <div class="status-pill" id="connection-status">Not tested</div>
+      </section>
+
+      <section class="card settings-card">
+        <div class="grid two">
+          <label>
+            <span>Base URL</span>
+            <input id="base-url" type="text" placeholder="https://ai-nonymauz-cloud.onrender.com" />
+          </label>
+          <label>
+            <span>API key / master key</span>
+            <input id="api-key" type="password" placeholder="sk-... or LiteLLM master key" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="grid three">
+          <label>
+            <span>Model</span>
+            <select id="model-select">
+              <option value="ai-nonymauz-coding">ai-nonymauz-coding</option>
+              <option value="ai-nonymauz-fast">ai-nonymauz-fast</option>
+              <option value="ai-nonymauz-qwen">ai-nonymauz-qwen</option>
+              <option value="ai-nonymauz-free-pool">ai-nonymauz-free-pool</option>
+              <option value="custom">Custom model...</option>
+            </select>
+          </label>
+          <label id="custom-model-wrap" class="hidden">
+            <span>Custom model</span>
+            <input id="custom-model" type="text" placeholder="provider/model or alias" />
+          </label>
+          <label>
+            <span>Max tokens</span>
+            <input id="max-tokens" type="number" value="1024" min="64" max="8192" />
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label class="range-label" for="temperature">Temperature <strong id="temp-val">0.7</strong></label>
+          <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" />
+          <label class="checkbox-label"><input id="stream-toggle" type="checkbox" checked /> Stream</label>
+          <button id="load-models-btn" type="button" class="secondary">Load /v1/models</button>
+        </div>
+
+        <details>
+          <summary>System prompt</summary>
+          <textarea id="system-input" rows="3" placeholder="You are a helpful assistant..."></textarea>
+        </details>
+      </section>
+
+      <section class="card chat-card">
+        <div id="chat-window" class="chat-window" aria-live="polite">
+          <div class="empty-state">Send a message to begin.</div>
+        </div>
+
+        <div class="stats-bar">
+          <div>Tokens: <strong id="stat-tokens">—</strong></div>
+          <div>Latency: <strong id="stat-latency">—</strong></div>
+          <div>Model used: <strong id="stat-model">—</strong></div>
+          <button id="copy-curl-btn" type="button" class="link-btn">Copy cURL</button>
+          <button id="clear-btn" type="button" class="link-btn danger">Clear</button>
+        </div>
+
+        <form id="chat-form" class="input-row">
+          <textarea id="user-input" rows="1" placeholder="Type a test message…"></textarea>
+          <button id="send-btn" type="submit">Send</button>
+          <button id="stop-btn" type="button" class="secondary" disabled>Stop</button>
+        </form>
+      </section>
+
+      <section class="card note-card">
+        <strong>Security note:</strong> this is a browser-based testing tool. Do not expose your LiteLLM master key in a public deployment. For public demos, use a temporary low-limit key or run locally only.
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
