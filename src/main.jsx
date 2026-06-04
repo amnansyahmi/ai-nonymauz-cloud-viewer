@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
-const DEFAULT_BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
+const DEFAULT_BACKEND = import.meta.env.VITE_BACKEND_URL || 'https://ai-nonymauz-cloud.onrender.com';
 
 const MODEL_OPTIONS = [
   'auto',
@@ -81,9 +81,19 @@ function App() {
   const [isSending, setIsSending] = useState(false);
   const [stats, setStats] = useState({ latency: '—', firstToken: '—', model: '—', tokens: '—', rag: '—', tool: '—' });
   const [sources, setSources] = useState([]);
+
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [imageStyle, setImageStyle] = useState(localStorage.getItem('imageStyle') || 'realistic');
+  const [imageSize, setImageSize] = useState(localStorage.getItem('imageSize') || '1024x1024');
+  const [generatedImage, setGeneratedImage] = useState('');
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState('');
+  const [imageMeta, setImageMeta] = useState(null);
+
   const chatRef = useRef(null);
 
   const canSend = useMemo(() => input.trim() && !isSending, [input, isSending]);
+  const canGenerateImage = useMemo(() => imagePrompt.trim() && !imageLoading, [imagePrompt, imageLoading]);
 
   function applyMode(nextMode) {
     const nextPreset = MODE_PRESETS[nextMode] || MODE_PRESETS.fast;
@@ -109,6 +119,8 @@ function App() {
     localStorage.setItem('useRag', String(useRag));
     localStorage.setItem('useTools', String(useTools));
     localStorage.setItem('systemPrompt', systemPrompt);
+    localStorage.setItem('imageStyle', imageStyle);
+    localStorage.setItem('imageSize', imageSize);
   }
 
   function scrollBottom() {
@@ -266,6 +278,55 @@ function App() {
     navigator.clipboard.writeText(`curl -X POST "${backendUrl.replace(/\/$/, '')}/chat" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body).replaceAll("'", "'\\''")}'`);
   }
 
+
+  async function generateImage() {
+    if (!canGenerateImage) return;
+    persist();
+    setImageLoading(true);
+    setImageError('');
+    setGeneratedImage('');
+    setImageMeta(null);
+
+    try {
+      const res = await fetch(`${backendUrl.replace(/\/$/, '')}/image/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: imagePrompt.trim(),
+          style: imageStyle,
+          size: imageSize
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`HTTP ${res.status}: ${err.slice(0, 700)}`);
+      }
+
+      const data = await res.json();
+      setGeneratedImage(`data:${data.mime_type};base64,${data.image_base64}`);
+      setImageMeta({
+        model: data.model,
+        usageToday: data.usage_today,
+        dailyLimit: data.daily_limit
+      });
+    } catch (err) {
+      setImageError(err.message || 'Image generation failed');
+    } finally {
+      setImageLoading(false);
+    }
+  }
+
+  function downloadGeneratedImage() {
+    if (!generatedImage) return;
+    const link = document.createElement('a');
+    link.href = generatedImage;
+    link.download = 'ai-nonymauz-image.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -315,11 +376,13 @@ function App() {
 
         <label>
           RAG top chunks
+          <span className="field-hint">How many relevant .md sections to include. Higher = better context but slower.</span>
           <input type="number" min="0" max="8" value={ragTopK} onChange={e => setRagTopK(Number(e.target.value))} />
         </label>
 
         <label>
           RAG max chars
+          <span className="field-hint">Maximum markdown text sent to AI. Higher = more accurate but uses more tokens.</span>
           <input type="number" min="500" max="20000" step="500" value={ragMaxChars} onChange={e => setRagMaxChars(Number(e.target.value))} />
         </label>
 
@@ -361,6 +424,67 @@ function App() {
           {sources.map((s, i) => <span key={i}>{s.source} / {s.title} · score {s.score}</span>)}
         </section>
       )}
+
+      <section className="panel image-panel">
+        <div className="image-header">
+          <div>
+            <h2>Image Generation</h2>
+            <p>Uses your backend <code>/image/generate</code> route with Gemini.</p>
+          </div>
+          {imageMeta && (
+            <span className="image-meta">
+              {imageMeta.model} · {imageMeta.usageToday}/{imageMeta.dailyLimit} today
+            </span>
+          )}
+        </div>
+
+        <textarea
+          rows="4"
+          value={imagePrompt}
+          onChange={e => setImagePrompt(e.target.value)}
+          placeholder="Describe the image you want. Example: A cute robot coding at a desk, futuristic office, warm lighting"
+        />
+
+        <div className="image-controls">
+          <label>
+            Style
+            <select value={imageStyle} onChange={e => setImageStyle(e.target.value)}>
+              <option value="realistic">Realistic</option>
+              <option value="product">Product</option>
+              <option value="poster">Poster</option>
+              <option value="logo">Logo</option>
+              <option value="anime">Anime</option>
+              <option value="ui">UI Mockup</option>
+              <option value="infographic">Infographic</option>
+              <option value="cinematic">Cinematic</option>
+            </select>
+          </label>
+
+          <label>
+            Size / aspect
+            <select value={imageSize} onChange={e => setImageSize(e.target.value)}>
+              <option value="1024x1024">Square 1024x1024</option>
+              <option value="16:9">Wide 16:9</option>
+              <option value="9:16">Portrait 9:16</option>
+              <option value="4:3">Landscape 4:3</option>
+            </select>
+          </label>
+
+          <button disabled={!canGenerateImage} onClick={generateImage}>
+            {imageLoading ? 'Generating...' : 'Generate image'}
+          </button>
+
+          {generatedImage && <button onClick={downloadGeneratedImage}>Download</button>}
+        </div>
+
+        {imageError && <div className="image-error">{imageError}</div>}
+
+        {generatedImage && (
+          <div className="image-result">
+            <img src={generatedImage} alt="Generated result" />
+          </div>
+        )}
+      </section>
 
       <section className="composer">
         <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => {
