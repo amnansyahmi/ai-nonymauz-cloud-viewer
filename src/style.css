@@ -43,41 +43,61 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .composer textarea { flex: 1; min-height: 54px; max-height: 160px; }
 .composer button { min-height: 54px; padding-inline: 20px; }
 
-.field-hint {
+
+/* Tabs */
+.tab-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.tab-row button {
+  border: 1px solid var(--border, #263244);
+  background: var(--panel, #121821);
+  color: var(--text, #e5e7eb);
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.tab-row button.active {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Helpful field descriptions */
+.hint {
   display: block;
-  margin-top: 3px;
+  margin-top: 4px;
+  margin-bottom: 6px;
   font-size: 11px;
-  color: #777;
+  color: var(--muted, #8b9bb4);
   font-weight: normal;
   line-height: 1.4;
 }
 
+/* Image generation */
 .image-panel {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .image-header {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
   align-items: flex-start;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .image-header h2 {
   margin: 0;
+  font-size: 18px;
 }
 
 .image-header p {
   margin: 4px 0 0;
-  color: #666;
-  font-size: 13px;
-}
-
-.image-meta {
+  color: var(--muted, #8b9bb4);
   font-size: 12px;
-  color: #666;
-  white-space: nowrap;
 }
 
 .image-panel textarea {
@@ -96,32 +116,60 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .image-controls label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  min-width: 150px;
 }
 
-.image-error {
-  margin-top: 10px;
-  color: #b00020;
-  font-size: 13px;
-  border: 1px solid #f1b5b5;
-  background: #fff5f5;
-  padding: 10px;
+.image-note {
+  margin-top: 12px;
+}
+
+.error-box {
+  margin-top: 12px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.5);
   border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.image-loading {
+  margin-top: 12px;
+  color: var(--muted, #8b9bb4);
+  font-size: 13px;
 }
 
 .image-result {
   margin-top: 16px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
+  border: 1px solid var(--border, #263244);
+  border-radius: 14px;
   padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .image-result img {
   width: 100%;
-  max-width: 720px;
-  border-radius: 10px;
+  max-width: 760px;
+  border-radius: 12px;
   display: block;
 }
+
+.image-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  color: var(--muted, #8b9bb4);
+  font-size: 12px;
+}
+
+.image-meta b {
+  color: var(--text, #e5e7eb);
+}
+
 @media (max-width: 800px) {
   .hero { flex-direction: column; }
   .mode-row, .settings { grid-template-columns: 1fr; }
