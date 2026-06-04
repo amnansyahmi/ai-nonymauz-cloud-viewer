@@ -43,42 +43,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .composer textarea { flex: 1; min-height: 54px; max-height: 160px; }
 .composer button { min-height: 54px; padding-inline: 20px; }
 
-.image-panel {
-  margin-top: 16px;
-}
-
-.image-panel textarea {
-  width: 100%;
-  resize: vertical;
-}
-
-.image-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: end;
-  margin-top: 10px;
-}
-
-.image-controls label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.image-result {
-  margin-top: 16px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.image-result img {
-  width: 100%;
-  max-width: 720px;
-  border-radius: 10px;
-  display: block;
-}
 
 @media (max-width: 800px) {
   .hero { flex-direction: column; }
