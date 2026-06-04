@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
-const DEFAULT_BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:10000';
+const DEFAULT_BACKEND = import.meta.env.VITE_BACKEND_URL || 'https://ai-nonymauz-cloud.onrender.com/';
 
 const MODEL_OPTIONS = [
   'auto',
