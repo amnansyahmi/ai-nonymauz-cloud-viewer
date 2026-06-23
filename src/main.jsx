@@ -137,6 +137,9 @@ function App() {
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState('');
 
+  const [modelUsage, setModelUsage] = useState({});
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+
   const canSend = useMemo(() => input.trim() && !isSending, [input, isSending]);
   const canGenerateImage = useMemo(
     () => imagePrompt.trim() && !imageLoading,
@@ -374,6 +377,83 @@ function App() {
     }
   }
 
+  async function checkModelUsage() {
+    setIsLoadingUsage(true);
+    setModelUsage({});
+    
+    try {
+      const baseUrl = normalizeBackendUrl(backendUrl);
+      const apiKey = localStorage.getItem('litellm.apiKey') || '';
+      
+      // Fetch models list first
+      const modelsRes = await fetch(`${baseUrl}/v1/models`, {
+        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
+      });
+      
+      if (!modelsRes.ok) {
+        throw new Error(`HTTP ${modelsRes.status}: Failed to fetch models`);
+      }
+      
+      const modelsData = await modelsRes.json();
+      const modelIds = (modelsData.data || []).map(item => item.id).filter(Boolean);
+      
+      if (!modelIds.length) {
+        setModelUsage({ error: 'No models available' });
+        return;
+      }
+      
+      // Check usage for each model by making a minimal request
+      const usageResults = {};
+      
+      for (const modelId of modelIds.slice(0, 10)) { // Limit to first 10 models to avoid overwhelming
+        try {
+          const started = Date.now();
+          const testRes = await fetch(`${baseUrl}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {})
+            },
+            body: JSON.stringify({
+              model: modelId,
+              messages: [{ role: 'user', content: 'Hi' }],
+              max_tokens: 1,
+              stream: false
+            })
+          });
+          
+          const testData = await testRes.json();
+          
+          if (testRes.ok && testData.usage) {
+            usageResults[modelId] = {
+              status: 'ok',
+              promptTokens: testData.usage.prompt_tokens || 0,
+              completionTokens: testData.usage.completion_tokens || 0,
+              totalTokens: testData.usage.total_tokens || 0,
+              latency: `${Date.now() - started}ms`
+            };
+          } else {
+            usageResults[modelId] = {
+              status: 'error',
+              error: testData.error?.message || testRes.statusText
+            };
+          }
+        } catch (err) {
+          usageResults[modelId] = {
+            status: 'error',
+            error: err.message
+          };
+        }
+      }
+      
+      setModelUsage(usageResults);
+    } catch (err) {
+      setModelUsage({ error: err.message });
+    } finally {
+      setIsLoadingUsage(false);
+    }
+  }
+
   function clearChat() {
     setMessages([]);
     setSources([]);
@@ -428,7 +508,12 @@ function App() {
           <h1>AI Nonymauz Tester</h1>
           <p>Fast mode + cached markdown RAG + tools + LiteLLM streaming</p>
         </div>
-        <button onClick={pingBackend}>Ping backend</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={checkModelUsage} disabled={isLoadingUsage}>
+            {isLoadingUsage ? 'Checking...' : 'Check Model Tokens'}
+          </button>
+          <button onClick={pingBackend}>Ping backend</button>
+        </div>
       </header>
 
       <nav className="tab-row">
@@ -615,6 +700,47 @@ function App() {
               {isSending ? 'Sending...' : 'Send'}
             </button>
           </section>
+
+          {Object.keys(modelUsage).length > 0 && !modelUsage.error && (
+            <section className="panel model-usage">
+              <h3 style={{ margin: '0 0 12px', fontSize: '14px' }}>Model Token Usage</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                {Object.entries(modelUsage).map(([modelId, data]) => (
+                  <div
+                    key={modelId}
+                    style={{
+                      border: '1px solid #303644',
+                      borderRadius: '10px',
+                      padding: '10px',
+                      background: data.status === 'ok' ? '#172033' : '#2a1515'
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '12px' }}>{modelId}</div>
+                    {data.status === 'ok' ? (
+                      <div style={{ fontSize: '11px', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <span>Prompt: <b style={{ color: '#e8e8e8' }}>{data.promptTokens}</b></span>
+                        <span>Completion: <b style={{ color: '#e8e8e8' }}>{data.completionTokens}</b></span>
+                        <span>Total: <b style={{ color: '#60a5fa' }}>{data.totalTokens}</b></span>
+                        <span>Latency: <b style={{ color: '#e8e8e8' }}>{data.latency}</b></span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '11px', color: '#fecaca' }}>
+                        Error: {data.error || 'Unknown error'}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {modelUsage.error && (
+            <section className="panel model-usage">
+              <div className="error-box" style={{ margin: 0 }}>
+                Failed to load model usage: {modelUsage.error}
+              </div>
+            </section>
+          )}
         </>
       )}
 

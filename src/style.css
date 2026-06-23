@@ -170,6 +170,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   color: var(--text, #e5e7eb);
 }
 
+/* Model usage panel */
+.model-usage {
+  margin-top: 12px;
+}
+
 @media (max-width: 800px) {
   .hero { flex-direction: column; }
   .mode-row, .settings { grid-template-columns: 1fr; }

@@ -1,6 +1,53 @@
-node_modules
-.DS_Store
-dist
+```
+# Build artifacts
+dist/
+build/
+*.css
+*.js
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment
 .env
 .env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Logs and temp files
 *.log
+*.tmp
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+```
