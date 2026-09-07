@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#08110d" />
+    <title>KretivCall — Free AI Receptionist</title>
+    <link rel="stylesheet" href="/receptionist.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="phone-card" aria-label="AI receptionist call demo">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">KRETIVCALL LAB</p>
+            <h1>AI Receptionist</h1>
+          </div>
+          <button id="settingsBtn" class="icon-btn" type="button" aria-label="Open settings">⚙</button>
+        </header>
+
+        <div class="call-stage">
+          <div id="avatar" class="avatar" aria-hidden="true">KC</div>
+          <h2 id="businessTitle">Demo Business</h2>
+          <p id="callStatus" class="status">Ready to call</p>
+          <p id="timer" class="timer">00:00</p>
+
+          <div id="wave" class="wave" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <section class="transcript-card" aria-label="Live transcript">
+          <div class="transcript-head">
+            <span>Live transcript</span>
+            <button id="clearBtn" class="text-btn" type="button">Clear</button>
+          </div>
+          <div id="transcript" class="transcript" aria-live="polite">
+            <div class="empty-state">
+              <strong>Free browser-call MVP</strong>
+              <span>Press Call, allow microphone access, then speak naturally.</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="controls">
+          <button id="muteBtn" class="control-btn secondary" type="button" disabled>
+            <span class="control-icon">🎙</span>
+            <span id="muteLabel">Mute</span>
+          </button>
+
+          <button id="callBtn" class="call-btn" type="button" aria-label="Start call">
+            <span id="callIcon">☎</span>
+          </button>
+
+          <button id="speakerBtn" class="control-btn secondary" type="button">
+            <span class="control-icon">🔊</span>
+            <span id="speakerLabel">Voice on</span>
+          </button>
+        </div>
+
+        <form id="textFallback" class="text-fallback" autocomplete="off">
+          <input id="textInput" type="text" placeholder="Or type here to test..." aria-label="Type a message" />
+          <button type="submit">Send</button>
+        </form>
+
+        <p id="supportNote" class="support-note"></p>
+      </section>
+    </main>
+
+    <div id="settingsBackdrop" class="backdrop" hidden></div>
+    <aside id="settingsPanel" class="settings-panel" aria-label="Receptionist settings" aria-hidden="true">
+      <div class="settings-head">
+        <div>
+          <p class="eyebrow">DEMO SETTINGS</p>
+          <h2>Receptionist profile</h2>
+        </div>
+        <button id="closeSettingsBtn" class="icon-btn" type="button" aria-label="Close settings">✕</button>
+      </div>
+
+      <label>
+        Business name
+        <input id="businessName" type="text" value="Demo Business" />
+      </label>
+
+      <label>
+        Greeting
+        <textarea id="greeting" rows="3">Assalamualaikum dan hai. Terima kasih kerana menghubungi Demo Business. Ada apa yang saya boleh bantu?</textarea>
+      </label>
+
+      <label>
+        Business context
+        <textarea id="businessContext" rows="7" placeholder="Example: We are open Monday–Saturday, 9am–6pm. Services: ... Prices: ..."></textarea>
+      </label>
+
+      <label>
+        Backend URL
+        <input id="backendUrl" type="url" value="https://ai-nonymauz-cloud.onrender.com" inputmode="url" />
+      </label>
+
+      <label>
+        Preferred language
+        <select id="language">
+          <option value="ms-MY" selected>Bahasa Melayu (Malaysia)</option>
+          <option value="en-MY">English (Malaysia)</option>
+          <option value="en-US">English (US)</option>
+        </select>
+      </label>
+
+      <button id="saveSettingsBtn" class="save-btn" type="button">Save settings</button>
+      <p class="settings-note">This MVP stores settings only in this browser. No phone number or paid telephony is used.</p>
+    </aside>
+
+    <script type="module" src="/receptionist.js"></script>
+  </body>
+</html>
