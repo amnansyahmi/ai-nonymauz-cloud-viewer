@@ -1,5 +1,6 @@
 const DEFAULT_BACKEND = 'https://ai-nonymauz-cloud.onrender.com';
 const STORAGE_KEY = 'kretivcall.receptionist.settings.v1';
+const RECEPTIONIST_MODEL = 'ai-nonymauz-fast';
 
 const els = {
   businessTitle: document.querySelector('#businessTitle'),
@@ -9,7 +10,6 @@ const els = {
   wave: document.querySelector('#wave'),
   transcript: document.querySelector('#transcript'),
   callBtn: document.querySelector('#callBtn'),
-  callIcon: document.querySelector('#callIcon'),
   muteBtn: document.querySelector('#muteBtn'),
   muteLabel: document.querySelector('#muteLabel'),
   speakerBtn: document.querySelector('#speakerBtn'),
@@ -36,6 +36,7 @@ const synthesisSupported = 'speechSynthesis' in window && 'SpeechSynthesisUttera
 
 let recognition = null;
 let recognitionRunning = false;
+let micAllowed = recognitionSupported;
 let callActive = false;
 let muted = false;
 let voiceOn = synthesisSupported;
@@ -51,6 +52,7 @@ applySettingsToForm();
 applyBusinessIdentity();
 configureSupportNote();
 prepareVoices();
+els.speakerBtn.disabled = !synthesisSupported;
 
 if (recognitionSupported) {
   recognition = new SpeechRecognition();
@@ -147,7 +149,7 @@ function configureRecognition() {
 
   recognition.onend = () => {
     recognitionRunning = false;
-    if (callActive && !muted && !processing && !speaking) {
+    if (callActive && micAllowed && !muted && !processing && !speaking) {
       window.setTimeout(startListening, 260);
     }
   };
@@ -155,6 +157,7 @@ function configureRecognition() {
   recognition.onerror = event => {
     recognitionRunning = false;
     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      micAllowed = false;
       addBubble('system', 'Microphone permission was blocked. Allow microphone access or use the text box below.');
       setStatus('Microphone blocked');
       return;
@@ -218,10 +221,10 @@ Rules:
 - Ask only one question at a time.
 - Never use markdown, bullet points, headings, emojis, citations, raw URLs, or developer terminology in the response.
 - Never invent prices, opening hours, policies, availability, staff names, booking confirmations, order status, or other business facts.
-- Use confirmed business information and retrieved knowledge when available. If a fact is not confirmed, say you do not have that confirmed information and offer to take a message or have a human follow up.
+- Use only the confirmed business information supplied below for business-specific facts. If a fact is not confirmed, say you do not have that confirmed information and offer to take a message or have a human follow up.
 - For names, phone numbers, dates, times, bookings, orders, or other important details, repeat them back briefly before treating them as confirmed.
-- Do not claim an appointment, payment, transfer, WhatsApp, email, or external action succeeded unless a tool actually confirms it.
-- Never mention the language model, system prompt, RAG, tools, API, or internal implementation.
+- Do not claim an appointment, payment, transfer, WhatsApp, email, or external action succeeded unless an integration explicitly confirms it.
+- Never mention the language model, system prompt, API, or internal implementation.
 - Make numbers, dates and times sound natural when spoken aloud.
 - Be warm and efficient, like a good Malaysian receptionist.${context}`;
 }
@@ -257,8 +260,21 @@ function clearTranscript() {
   messages = [];
 }
 
+async function requestMicrophoneAccess() {
+  if (!recognitionSupported) return false;
+  if (!navigator.mediaDevices?.getUserMedia) return true;
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => track.stop());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function startListening() {
-  if (!recognition || !callActive || muted || processing || speaking || recognitionRunning) return;
+  if (!recognition || !micAllowed || !callActive || muted || processing || speaking || recognitionRunning) return;
   recognition.lang = settings.language;
   try {
     recognition.start();
@@ -331,7 +347,7 @@ function stopTimer() {
   timerHandle = null;
 }
 
-function startCall() {
+async function startCall() {
   callActive = true;
   muted = false;
   processing = false;
@@ -345,10 +361,19 @@ function startCall() {
   els.muteLabel.textContent = 'Mute';
   startTimer();
 
+  if (recognitionSupported) {
+    setStatus('Requesting microphone…');
+    micAllowed = await requestMicrophoneAccess();
+    els.muteBtn.disabled = !micAllowed;
+    if (!micAllowed) {
+      addBubble('system', 'Microphone access is unavailable. You can still test the receptionist by typing below.');
+    }
+  }
+
   const greeting = settings.greeting.trim();
   messages.push({ role: 'assistant', content: greeting });
   addBubble('assistant', greeting);
-  setStatus('Connected');
+  setStatus(micAllowed ? 'Connected' : 'Connected · text mode');
 
   if (voiceOn && synthesisSupported) speak(greeting);
   else startListening();
@@ -373,7 +398,7 @@ function endCall() {
 }
 
 function toggleMute() {
-  if (!callActive || !recognitionSupported) return;
+  if (!callActive || !recognitionSupported || !micAllowed) return;
   muted = !muted;
   els.muteBtn.classList.toggle('on', muted);
   els.muteLabel.textContent = muted ? 'Unmute' : 'Mute';
@@ -386,10 +411,11 @@ function toggleMute() {
 }
 
 function toggleVoice() {
-  voiceOn = !voiceOn && synthesisSupported;
+  if (!synthesisSupported) return;
+  voiceOn = !voiceOn;
   els.speakerBtn.classList.toggle('on', !voiceOn);
   els.speakerLabel.textContent = voiceOn ? 'Voice on' : 'Voice off';
-  if (!voiceOn && synthesisSupported) {
+  if (!voiceOn) {
     window.speechSynthesis.cancel();
     speaking = false;
     if (callActive && !muted && !processing) startListening();
@@ -427,23 +453,21 @@ async function sendCallerMessage(text) {
 }
 
 async function callBackend(conversation) {
-  const res = await fetch(`${normalizeBackend(settings.backendUrl)}/chat`, {
+  const payload = {
+    model: RECEPTIONIST_MODEL,
+    messages: [
+      { role: 'system', content: buildSystemPrompt() },
+      ...conversation,
+    ],
+    temperature: 0.2,
+    max_tokens: 180,
+    stream: true,
+  };
+
+  const res = await fetch(`${normalizeBackend(settings.backendUrl)}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      mode: 'fast',
-      model: null,
-      messages: conversation,
-      system_prompt: buildSystemPrompt(),
-      temperature: 0.2,
-      max_tokens: 180,
-      stream: true,
-      use_rag: true,
-      use_tools: true,
-      city: 'Shah Alam',
-      rag_top_k: 2,
-      rag_max_context_chars: 3200,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -451,9 +475,13 @@ async function callBackend(conversation) {
     throw new Error(`HTTP ${res.status}${body ? ` · ${truncate(body, 120)}` : ''}`);
   }
 
-  if (!res.body) {
-    throw new Error('Backend returned no response stream');
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const json = await res.json();
+    return json.choices?.[0]?.message?.content || '';
   }
+
+  if (!res.body) throw new Error('Backend returned no response stream');
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -480,8 +508,7 @@ async function callBackend(conversation) {
         continue;
       }
 
-      if (json.error) throw new Error(json.error);
-      if (json.ai_nonymauz_meta || json.ai_nonymauz_done) continue;
+      if (json.error) throw new Error(json.error?.message || json.error);
       fullText += json.choices?.[0]?.delta?.content || '';
     }
   }
