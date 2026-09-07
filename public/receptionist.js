@@ -1,6 +1,9 @@
 const DEFAULT_BACKEND = 'https://ai-nonymauz-cloud.onrender.com';
 const STORAGE_KEY = 'kretivcall.receptionist.settings.v1';
 const RECEPTIONIST_MODEL = 'ai-nonymauz-fast';
+const TTS_RATE = 0.96;
+const TTS_PITCH = 0.98;
+const BETWEEN_PHRASE_PAUSE_MS = 140;
 
 const els = {
   businessTitle: document.querySelector('#businessTitle'),
@@ -46,6 +49,7 @@ let callStartedAt = 0;
 let timerHandle = null;
 let messages = [];
 let selectedVoice = null;
+let speechGeneration = 0;
 
 const settings = loadSettings();
 applySettingsToForm();
@@ -62,7 +66,7 @@ if (recognitionSupported) {
 function loadSettings() {
   const fallback = {
     businessName: 'Demo Business',
-    greeting: 'Assalamualaikum dan hai. Terima kasih kerana menghubungi Demo Business. Ada apa yang saya boleh bantu?',
+    greeting: 'Hai, terima kasih kerana menghubungi Demo Business. Ya, ada apa saya boleh bantu?',
     businessContext: '',
     backendUrl: DEFAULT_BACKEND,
     language: 'ms-MY',
@@ -79,7 +83,7 @@ function loadSettings() {
 function saveSettings() {
   const previousBusiness = settings.businessName;
   settings.businessName = els.businessName.value.trim() || 'Demo Business';
-  settings.greeting = els.greeting.value.trim() || `Hai. Terima kasih kerana menghubungi ${settings.businessName}. Ada apa yang saya boleh bantu?`;
+  settings.greeting = els.greeting.value.trim() || `Hai, terima kasih kerana menghubungi ${settings.businessName}. Ya, ada apa saya boleh bantu?`;
   settings.businessContext = els.businessContext.value.trim();
   settings.backendUrl = normalizeBackend(els.backendUrl.value);
   settings.language = els.language.value || 'ms-MY';
@@ -133,7 +137,7 @@ function configureSupportNote() {
     els.supportNote.textContent = 'Microphone works, but spoken AI output is unavailable in this browser.';
     return;
   }
-  els.supportNote.textContent = 'Browser voice demo · no phone number · no telephony charge';
+  els.supportNote.textContent = 'Natural voice demo · tap Interrupt while AI is speaking';
 }
 
 function configureRecognition() {
@@ -150,7 +154,7 @@ function configureRecognition() {
   recognition.onend = () => {
     recognitionRunning = false;
     if (callActive && micAllowed && !muted && !processing && !speaking) {
-      window.setTimeout(startListening, 260);
+      window.setTimeout(startListening, 220);
     }
   };
 
@@ -213,20 +217,34 @@ function buildSystemPrompt() {
     ? `\n\nConfirmed business information:\n${settings.businessContext}`
     : '\n\nNo confirmed business profile has been supplied yet. Do not invent business-specific facts.';
 
-  return `You are the live AI receptionist for ${settings.businessName}. This is a spoken phone-style conversation, not a chat interface.
+  return `You are the live AI receptionist for ${settings.businessName}. This is a real-time spoken phone-style conversation, not a chat interface.
 
-Rules:
-- Speak naturally in Malaysian Bahasa Melayu by default. If the caller speaks English, mirror their language. Casual Malaysian code-switching is fine when natural.
-- Keep each turn very short: usually 1 or 2 spoken sentences.
+Voice personality:
+- Sound like a capable Malaysian receptionist: warm, relaxed, attentive and efficient.
+- Use natural Malaysian Bahasa Melayu by default. If the caller speaks English, mirror their language. Light Malaysian code-switching is fine when it genuinely sounds natural.
+- Prefer everyday spoken phrasing such as "boleh", "nak", "okay", "baik", "sekejap ya", "ya, betul" and "alright" when appropriate.
+- Do not force slang, filler words or English into every turn. Professional and natural is better than trying too hard to sound casual.
+- Vary acknowledgements naturally. Do not start every reply with the same word.
+- After the initial greeting, do not greet the caller again on every turn. If they only say "hello" or "hi", reply briefly and continue, for example "Ya, hello. Ada apa saya boleh bantu?"
+- Avoid stiff call-centre phrases such as "Adakah anda ingin...", "Sila nyatakan..." or "Saya ingin memaklumkan..." when a shorter spoken phrase works.
+- Avoid exclamation marks unless genuinely needed.
+
+Conversation rhythm:
+- Keep each turn short, normally 1 or 2 sentences and under about 35 spoken words.
+- Give the direct answer first, then ask at most one useful follow-up question.
 - Ask only one question at a time.
-- Never use markdown, bullet points, headings, emojis, citations, raw URLs, or developer terminology in the response.
-- Never invent prices, opening hours, policies, availability, staff names, booking confirmations, order status, or other business facts.
-- Use only the confirmed business information supplied below for business-specific facts. If a fact is not confirmed, say you do not have that confirmed information and offer to take a message or have a human follow up.
-- For names, phone numbers, dates, times, bookings, orders, or other important details, repeat them back briefly before treating them as confirmed.
-- Do not claim an appointment, payment, transfer, WhatsApp, email, or external action succeeded unless an integration explicitly confirms it.
-- Never mention the language model, system prompt, API, or internal implementation.
-- Make numbers, dates and times sound natural when spoken aloud.
-- Be warm and efficient, like a good Malaysian receptionist.${context}`;
+- If the caller changes topic, follow them instead of finishing the previous script.
+- Do not repeat information the caller already gave unless confirming an important detail.
+- For important details such as names, phone numbers, dates, times, bookings and orders, repeat them back briefly to confirm.
+- Write numbers, money, dates and times in a way that sounds natural when read aloud.
+
+Grounding and safety:
+- Never invent prices, opening hours, policies, availability, staff names, booking confirmations, order status or other business facts.
+- Use only the confirmed business information supplied below for business-specific facts.
+- If something is not confirmed, say so simply and offer to take a message or have a human follow up.
+- Do not claim an appointment, payment, transfer, WhatsApp, email or other external action succeeded unless an integration explicitly confirms it.
+- Never mention the language model, system prompt, API or internal implementation.
+- Never use markdown, bullet points, headings, emojis, citations or raw URLs in the spoken reply.${context}`;
 }
 
 function setStatus(text, animate = false) {
@@ -292,40 +310,117 @@ function stopListening() {
   }
 }
 
+function restoreMuteControl() {
+  els.muteLabel.textContent = muted ? 'Unmute' : 'Mute';
+  els.muteBtn.classList.toggle('on', muted);
+}
+
+function interruptSpeech() {
+  if (!speaking) return;
+  speechGeneration += 1;
+  if (synthesisSupported) window.speechSynthesis.cancel();
+  speaking = false;
+  restoreMuteControl();
+  setStatus('Listening…', true);
+  if (callActive && !muted) window.setTimeout(startListening, 80);
+}
+
+function splitForSpeech(text) {
+  const clean = toSpokenText(text);
+  if (!clean) return [];
+
+  const sentences = clean.match(/[^.!?;]+[.!?;]?/g) || [clean];
+  const phrases = [];
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.length > 72 && trimmed.includes(',')) {
+      const commaParts = trimmed.split(/,\s+/);
+      commaParts.forEach((part, index) => {
+        const value = part.trim();
+        if (!value) return;
+        phrases.push(index < commaParts.length - 1 ? `${value},` : value);
+      });
+    } else {
+      phrases.push(trimmed);
+    }
+  }
+
+  return phrases;
+}
+
+function phrasePauseMs(phrase) {
+  if (/[.!?]$/.test(phrase)) return 190;
+  if (/[,;:]$/.test(phrase)) return 120;
+  return BETWEEN_PHRASE_PAUSE_MS;
+}
+
+function speakPhrase(phrase, generation) {
+  return new Promise(resolve => {
+    if (!callActive || !voiceOn || !synthesisSupported || generation !== speechGeneration) {
+      resolve(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(phrase);
+    utterance.lang = selectedVoice?.lang || settings.language;
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = TTS_RATE;
+    utterance.pitch = TTS_PITCH;
+    utterance.volume = 1;
+
+    utterance.onend = () => resolve(true);
+    utterance.onerror = () => resolve(false);
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
 async function speak(text) {
   if (!voiceOn || !synthesisSupported || !callActive || !text.trim()) {
     speaking = false;
+    restoreMuteControl();
     if (callActive && !muted) startListening();
     return;
   }
 
   stopListening();
   window.speechSynthesis.cancel();
+  speechGeneration += 1;
+  const generation = speechGeneration;
   speaking = true;
-  setStatus('Speaking…', true);
+  els.muteLabel.textContent = 'Interrupt';
+  els.muteBtn.classList.add('on');
+  setStatus('Speaking… · tap Interrupt to cut in', true);
 
-  const utterance = new SpeechSynthesisUtterance(toSpokenText(text));
-  utterance.lang = selectedVoice?.lang || settings.language;
-  if (selectedVoice) utterance.voice = selectedVoice;
-  utterance.rate = 1.02;
-  utterance.pitch = 1;
+  const phrases = splitForSpeech(text);
 
-  utterance.onend = () => {
-    speaking = false;
-    if (callActive && !muted) startListening();
-  };
-  utterance.onerror = () => {
-    speaking = false;
-    if (callActive && !muted) startListening();
-  };
+  for (let i = 0; i < phrases.length; i += 1) {
+    if (!speaking || generation !== speechGeneration || !callActive || !voiceOn) break;
+    const completed = await speakPhrase(phrases[i], generation);
+    if (!completed || generation !== speechGeneration) break;
 
-  window.speechSynthesis.speak(utterance);
+    if (i < phrases.length - 1) {
+      await new Promise(resolve => window.setTimeout(resolve, phrasePauseMs(phrases[i])));
+    }
+  }
+
+  if (generation !== speechGeneration) return;
+  speaking = false;
+  restoreMuteControl();
+
+  if (callActive && !muted) {
+    setStatus('Listening…', true);
+    window.setTimeout(startListening, 120);
+  }
 }
 
 function toSpokenText(text) {
   return (text || '')
     .replace(/https?:\/\/\S+/gi, '')
     .replace(/[*_#>`~]/g, '')
+    .replace(/\bRM\s*(\d[\d,.]*)/gi, '$1 ringgit')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -353,6 +448,7 @@ async function startCall() {
   processing = false;
   speaking = false;
   messages = [];
+  speechGeneration += 1;
 
   els.callBtn.classList.add('live');
   els.callBtn.setAttribute('aria-label', 'End call');
@@ -384,6 +480,7 @@ function endCall() {
   processing = false;
   speaking = false;
   muted = false;
+  speechGeneration += 1;
   stopListening();
   if (synthesisSupported) window.speechSynthesis.cancel();
   stopTimer();
@@ -399,13 +496,20 @@ function endCall() {
 
 function toggleMute() {
   if (!callActive || !recognitionSupported || !micAllowed) return;
+
+  if (speaking) {
+    interruptSpeech();
+    return;
+  }
+
   muted = !muted;
   els.muteBtn.classList.toggle('on', muted);
   els.muteLabel.textContent = muted ? 'Unmute' : 'Mute';
+
   if (muted) {
     stopListening();
     setStatus('Muted');
-  } else if (!processing && !speaking) {
+  } else if (!processing) {
     startListening();
   }
 }
@@ -415,9 +519,12 @@ function toggleVoice() {
   voiceOn = !voiceOn;
   els.speakerBtn.classList.toggle('on', !voiceOn);
   els.speakerLabel.textContent = voiceOn ? 'Voice on' : 'Voice off';
+
   if (!voiceOn) {
+    speechGeneration += 1;
     window.speechSynthesis.cancel();
     speaking = false;
+    restoreMuteControl();
     if (callActive && !muted && !processing) startListening();
   }
 }
@@ -428,8 +535,10 @@ async function sendCallerMessage(text) {
 
   processing = true;
   stopListening();
+  speechGeneration += 1;
   if (synthesisSupported) window.speechSynthesis.cancel();
   speaking = false;
+  restoreMuteControl();
 
   addBubble('user', clean);
   messages.push({ role: 'user', content: clean });
@@ -437,7 +546,7 @@ async function sendCallerMessage(text) {
 
   try {
     const response = await callBackend(messages);
-    const finalText = response.trim() || 'Maaf, saya tak dapat jawab sebentar tadi. Boleh cuba sekali lagi?';
+    const finalText = response.trim() || 'Maaf ya, tadi saya tak dapat jawab. Boleh cuba sekali lagi?';
     messages.push({ role: 'assistant', content: finalText });
     addBubble('assistant', finalText);
     processing = false;
@@ -459,8 +568,8 @@ async function callBackend(conversation) {
       { role: 'system', content: buildSystemPrompt() },
       ...conversation,
     ],
-    temperature: 0.2,
-    max_tokens: 180,
+    temperature: 0.38,
+    max_tokens: 130,
     stream: true,
   };
 
@@ -552,6 +661,7 @@ els.textFallback.addEventListener('submit', event => {
 });
 
 window.addEventListener('beforeunload', () => {
+  speechGeneration += 1;
   stopTimer();
   stopListening();
   if (synthesisSupported) window.speechSynthesis.cancel();
