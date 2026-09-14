@@ -1,4 +1,5 @@
 import { consumeSse } from './sse';
+import { messagesHaveImages } from '../chatImages';
 import type {
   BenchmarkResult,
   ChatMessage,
@@ -118,9 +119,19 @@ export class ApiClient {
     },
     signal: AbortSignal
   ): Promise<string> {
+    const hasImages = messagesHaveImages(messages);
+
+    // The backend detects image_url parts and switches an unpinned request to
+    // ai-nonymauz-vision. Do not accidentally pin a text-only model just because
+    // the user had selected one before attaching an image. An explicit vision
+    // alias remains pinned; every other image chat lets the backend route it.
+    const requestedModel = hasImages
+      ? (settings.model === 'ai-nonymauz-vision' ? settings.model : null)
+      : (settings.model === 'auto' ? null : settings.model);
+
     const body = {
       mode: settings.mode,
-      model: settings.model === 'auto' ? null : settings.model,
+      model: requestedModel,
       messages: messages.map(({ role, content }) => ({ role, content })),
       system_prompt: settings.systemPrompt,
       temperature: settings.temperature,
