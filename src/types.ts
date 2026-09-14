@@ -17,7 +17,8 @@ export interface ChatImagePart {
 export type ChatContentPart = ChatTextPart | ChatImagePart;
 export type ChatContent = string | ChatContentPart[];
 
-export interface ChatAttachment {
+export interface ChatImageAttachment {
+  kind: 'image';
   id: string;
   name: string;
   mimeType: string;
@@ -27,9 +28,38 @@ export interface ChatAttachment {
   dataUrl: string;
 }
 
+export interface ChatFileAttachment {
+  kind: 'file';
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  extension: string;
+  text: string;
+  extractedChars: number;
+  truncated: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export type ChatAttachment = ChatImageAttachment | ChatFileAttachment;
+
+export interface ChatDisplayAttachment {
+  kind: 'image' | 'file';
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl?: string;
+  width?: number;
+  height?: number;
+  extractedChars?: number;
+  truncated?: boolean;
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: ChatContent;
+  displayText?: string;
+  displayAttachments?: ChatDisplayAttachment[];
   streaming?: boolean;
   error?: boolean;
 }
@@ -70,6 +100,7 @@ export interface ChatSettings {
   mode: string;
   model: string;
   temperature: number;
+  useCustomMaxTokens: boolean;
   maxTokens: number;
   ragTopK: number;
   ragMaxChars: number;
@@ -77,6 +108,25 @@ export interface ChatSettings {
   useRag: boolean;
   useTools: boolean;
   systemPrompt: string;
+}
+
+export interface FileExtractResponse {
+  filename: string;
+  content_type: string;
+  extension: string;
+  text: string;
+  original_bytes: number;
+  extracted_chars: number;
+  truncated: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface FileStatusResponse {
+  enabled?: boolean;
+  supported_extensions?: string[];
+  max_upload_bytes?: number;
+  max_extracted_chars?: number;
+  storage?: string;
 }
 
 export interface ModelsResponse {
