@@ -4,6 +4,8 @@ import type {
   BenchmarkResult,
   ChatMessage,
   ChatSettings,
+  FileExtractResponse,
+  FileStatusResponse,
   HealthResponse,
   ImageGenerateResponse,
   ImageStatusResponse,
@@ -37,6 +39,36 @@ function humanErrorBody(body: string): string {
   return body.slice(0, 1200);
 }
 
+export function buildChatRequestBody(settings: ChatSettings, messages: ChatMessage[]) {
+  const hasImages = messagesHaveImages(messages);
+
+  // The backend detects image_url parts and switches an unpinned request to
+  // ai-nonymauz-vision. Do not accidentally pin a text-only model because the
+  // user selected one before attaching an image.
+  const requestedModel = hasImages
+    ? (settings.model === 'ai-nonymauz-vision' ? settings.model : null)
+    : (settings.model === 'auto' ? null : settings.model);
+
+  const body: Record<string, unknown> = {
+    mode: settings.mode,
+    model: requestedModel,
+    messages: messages.map(({ role, content }) => ({ role, content })),
+    system_prompt: settings.systemPrompt,
+    temperature: settings.temperature,
+    stream: true,
+    use_rag: settings.useRag,
+    use_tools: settings.useTools,
+    city: settings.city,
+    rag_top_k: settings.ragTopK,
+    rag_max_context_chars: settings.ragMaxChars
+  };
+
+  // Leaving max_tokens out is intentional. The backend can then use its mode
+  // profile + dynamic_max_tokens() instead of the old viewer-wide hard cap.
+  if (settings.useCustomMaxTokens) body.max_tokens = settings.maxTokens;
+  return body;
+}
+
 export class ApiClient {
   readonly baseUrl: string;
   readonly apiKey: string;
@@ -46,9 +78,10 @@ export class ApiClient {
     this.apiKey = apiKey.trim();
   }
 
-  private headers(extra?: HeadersInit): Headers {
+  private headers(extra?: HeadersInit, body?: BodyInit | null): Headers {
     const headers = new Headers(extra);
-    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    if (!isFormData && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     if (this.apiKey) headers.set('Authorization', `Bearer ${this.apiKey}`);
     return headers;
   }
@@ -56,7 +89,7 @@ export class ApiClient {
   private async checkedFetch(path: string, init?: RequestInit): Promise<Response> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
-      headers: this.headers(init?.headers)
+      headers: this.headers(init?.headers, init?.body)
     });
 
     if (!response.ok) {
@@ -92,6 +125,19 @@ export class ApiClient {
     return this.json('/image/status');
   }
 
+  fileStatus(): Promise<FileStatusResponse> {
+    return this.json('/files/status');
+  }
+
+  async extractFile(file: File): Promise<FileExtractResponse> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.json('/files/extract', {
+      method: 'POST',
+      body: form
+    });
+  }
+
   ragSearch(query: string, topK = 5, maxChars = 8000): Promise<RagSearchResponse> {
     const params = new URLSearchParams({
       q: query,
@@ -119,34 +165,9 @@ export class ApiClient {
     },
     signal: AbortSignal
   ): Promise<string> {
-    const hasImages = messagesHaveImages(messages);
-
-    // The backend detects image_url parts and switches an unpinned request to
-    // ai-nonymauz-vision. Do not accidentally pin a text-only model just because
-    // the user had selected one before attaching an image. An explicit vision
-    // alias remains pinned; every other image chat lets the backend route it.
-    const requestedModel = hasImages
-      ? (settings.model === 'ai-nonymauz-vision' ? settings.model : null)
-      : (settings.model === 'auto' ? null : settings.model);
-
-    const body = {
-      mode: settings.mode,
-      model: requestedModel,
-      messages: messages.map(({ role, content }) => ({ role, content })),
-      system_prompt: settings.systemPrompt,
-      temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
-      stream: true,
-      use_rag: settings.useRag,
-      use_tools: settings.useTools,
-      city: settings.city,
-      rag_top_k: settings.ragTopK,
-      rag_max_context_chars: settings.ragMaxChars
-    };
-
     const response = await this.checkedFetch('/chat', {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(buildChatRequestBody(settings, messages)),
       signal
     });
 
