@@ -12,7 +12,8 @@ const defaults: ChatSettings = {
   mode: 'normal',
   model: 'auto',
   temperature: 0.2,
-  maxTokens: 1400,
+  useCustomMaxTokens: false,
+  maxTokens: 2048,
   ragTopK: 3,
   ragMaxChars: 5000,
   city: 'Shah Alam',
@@ -39,6 +40,10 @@ export function loadSettings(): ChatSettings {
   return {
     ...defaults,
     ...saved,
+    // Existing v3 users previously always sent max_tokens. Treat a missing
+    // opt-in flag as OFF so the backend's dynamic token budget becomes the
+    // default immediately after this upgrade.
+    useCustomMaxTokens: saved.useCustomMaxTokens === true,
     apiKey: rememberedKey || sessionKey || legacyKey
   };
 }
