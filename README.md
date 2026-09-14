@@ -1,120 +1,85 @@
-# AI Nonymauz Model Tester
+# AI Nonymauz Console v3
 
-A lightweight browser UI for testing a LiteLLM proxy or any OpenAI-compatible `/v1/chat/completions` endpoint.
+A browser console for the current [`ai-nonymauz-cloud`](https://github.com/amnansyahmi/ai-nonymauz-cloud) backend.
 
-It started from `ai_nonymauz_model_tester.html` and has been converted into a GitHub-ready Vite project.
+This is no longer just a hard-coded model tester. The console reads backend capabilities dynamically and provides five focused tools:
 
-## Features
+- **Chat** — streaming chat with Markdown, stop/regenerate, RAG/tool controls, sources, and live runtime metadata.
+- **Diagnostics** — backend health, memory, RAG state, model aliases, profiles, knowledge files, and image status.
+- **RAG Inspector** — direct `/rag/search` testing without spending LLM tokens.
+- **Benchmark** — run one prompt against up to four live model aliases and compare latency/tokens/answers.
+- **Image Lab** — image status, generation, quota visibility, preview, and download.
 
-- Test `/v1/chat/completions`
-- Streaming and non-streaming mode
-- Custom LiteLLM model aliases
-- System prompt support
-- Temperature and max token controls
-- `/v1/models` loader
-- Latency, model-used, and token stats
-- Copy cURL for the latest request
-- Local browser storage for tester settings
+## Stack
 
-## Folder structure
+- React 19.3
+- Vite 8.3
+- TypeScript 7
+- Vitest 5
+- `react-markdown` + GFM rendering
 
-```txt
-ai-nonymauz-model-tester/
-├─ index.html
-├─ package.json
-├─ vercel.json
-├─ .env.example
-├─ .gitignore
-├─ README.md
-├─ src/
-│  ├─ main.js
-│  └─ style.css
-└─ .github/
-   └─ workflows/
-      └─ pages.yml
-```
+Dependencies are pinned to exact versions rather than `latest` so a future install does not silently change the application.
 
-## Run locally
+## Local development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the local Vite URL shown in the terminal.
+The first install will create `package-lock.json`. Commit that lockfile after installing so subsequent CI/Vercel builds are fully reproducible.
 
-## Configure default LiteLLM URL
+## Configuration
 
-Copy `.env.example` to `.env`:
-
-```bash
-cp .env.example .env
-```
-
-Then edit:
+Copy `.env.example` to `.env.local` if you want a different default backend:
 
 ```env
-VITE_LITELLM_BASE_URL=https://ai-nonymauz-cloud.onrender.com
+VITE_BACKEND_URL=https://ai-nonymauz-cloud.onrender.com
 ```
 
-You can still override the Base URL in the UI.
+### API key safety
 
-## Push to GitHub
+Do **not** put `LITELLM_MASTER_KEY` in a `VITE_*` environment variable. Vite variables are compiled into public browser JavaScript.
 
-Create a new empty GitHub repo first, then run:
+Enter the bearer key in **Connection** inside the console instead. By default it is stored only for the browser session. Enable **Remember key on this device** only on a trusted device if you want local persistent storage.
+
+When the viewer is confirmed to be sending the key correctly, the backend can safely use:
+
+```env
+REQUIRE_AUTH=true
+```
+
+## Backend endpoints used
+
+| Endpoint | Console use |
+| --- | --- |
+| `GET /health` | backend/RAG/memory state |
+| `GET /v1/models` | dynamic model discovery |
+| `GET /profiles` | live mode routing configuration |
+| `GET /knowledge` | knowledge-file inventory |
+| `GET /rag/search` | retrieval inspection |
+| `POST /chat` | native streaming chat + AI Nonymauz metadata |
+| `POST /v1/chat/completions` | OpenAI-compatible model benchmark |
+| `GET /image/status` | image provider/quota status |
+| `POST /image/generate` | image generation |
+
+No model alias is hard-coded in the UI. Provider/model changes in the backend appear after reconnect/refresh.
+
+## Scripts
 
 ```bash
-git init
-git add .
-git commit -m "Initial LiteLLM model tester"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/ai-nonymauz-model-tester.git
-git push -u origin main
+npm run dev        # local Vite dev server
+npm run build      # strict TypeScript check + production build
+npm test           # Vitest suite
+npm run preview    # serve the production build locally
 ```
 
-Replace `YOUR_USERNAME` with your GitHub username.
+## Vercel
 
-## Deploy to Vercel
+Import the repository as a Vite project. `vercel.json` already points Vercel at `npm run build` and the `dist` output directory.
 
-Option 1: Import from GitHub in Vercel.
+Set `VITE_BACKEND_URL` in Vercel only if the backend URL differs from the default. Never put the backend master key in Vercel as a `VITE_*` variable.
 
-- Framework preset: Vite
-- Build command: `npm run build`
-- Output directory: `dist`
+## Repository hygiene
 
-Option 2: Deploy from terminal:
-
-```bash
-npm install -g vercel
-vercel
-```
-
-## Deploy to GitHub Pages
-
-This repo includes `.github/workflows/pages.yml`.
-
-In GitHub:
-
-1. Go to **Settings** → **Pages**
-2. Under **Build and deployment**, choose **GitHub Actions**
-3. Push to `main`
-
-The workflow will build and publish the Vite app.
-
-## LiteLLM CORS reminder
-
-Because this UI runs in the browser, your LiteLLM proxy must allow browser requests from your local/dev/deployed origin. If you get a browser CORS error, configure your LiteLLM/proxy host to allow that origin.
-
-Example local/test origins:
-
-```txt
-http://localhost:5173
-https://your-vercel-app.vercel.app
-https://YOUR_USERNAME.github.io
-```
-
-## Security note
-
-Do not put your LiteLLM master key inside GitHub, `.env`, or public frontend code. This app stores the key only in your browser local storage when you enter it manually.
-
-For public deployments, use a temporary limited key, a test-only key, or run this locally.
+Generated `dist/` output and old packaged ZIP artifacts should not be committed. The old parallel vanilla-JS tester has also been removed; `src/main.tsx` is now the single application entry point.
