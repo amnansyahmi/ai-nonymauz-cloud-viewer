@@ -1,4 +1,10 @@
-import type { ChatAttachment, ChatContent, ChatImagePart, ChatMessage } from './types';
+import type {
+  ChatAttachment,
+  ChatContent,
+  ChatContentPart,
+  ChatImagePart,
+  ChatMessage
+} from './types';
 
 export const MAX_CHAT_IMAGES = 4;
 export const MAX_IMAGE_INPUT_BYTES = 12 * 1024 * 1024;
@@ -93,7 +99,7 @@ export function buildUserContent(text: string, attachments: ChatAttachment[]): C
   const trimmed = text.trim();
   if (attachments.length === 0) return trimmed;
 
-  const parts: ChatContent = [];
+  const parts: ChatContentPart[] = [];
   if (trimmed) parts.push({ type: 'text', text: trimmed });
   for (const attachment of attachments) {
     parts.push({
