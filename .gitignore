@@ -1,53 +1,27 @@
-```
-# Build artifacts
-dist/
-build/
-*.css
-*.js
-
 # Dependencies
 node_modules/
-package-lock.json
 
-# Environment
+# Build output
+dist/
+build/
+coverage/
+
+# Local environment
 .env
 .env.local
-*.env.*
+.env.*.local
 
-# Editors
-.vscode/
-.idea/
-
-# Logs and temp files
+# Logs / temporary files
 *.log
 *.tmp
 *.swp
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Compiled files
-*.o
-*.obj
-*.exe
-*.dll
-*.so
-*.a
-*.out
-
-# System files
+# Editors / OS
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Testing
-.mypy_cache/
-.pytest_cache/
-```
+# Test / tooling caches
+.vitest/
+.nyc_output/
