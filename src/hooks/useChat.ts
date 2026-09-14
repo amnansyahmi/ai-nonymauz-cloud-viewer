@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
+import { buildUserContent, chatContentImages, chatContentText } from '../chatImages';
 import type {
+  ChatAttachment,
+  ChatContent,
   ChatMessage,
   ChatSettings,
   ChatStats,
@@ -12,6 +15,10 @@ const emptyStats: ChatStats = {};
 
 function cleanAssistantText(value: string): string {
   return value.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trimStart();
+}
+
+function hasContent(content: ChatContent): boolean {
+  return Boolean(chatContentText(content).trim()) || chatContentImages(content).length > 0;
 }
 
 export function useChat(settings: ChatSettings) {
@@ -34,15 +41,14 @@ export function useChat(settings: ChatSettings) {
     setSources([]);
   }, []);
 
-  const run = useCallback(
-    async (text: string, historyOverride?: ChatMessage[]) => {
-      const trimmed = text.trim();
-      if (!trimmed || sending) return;
+  const runContent = useCallback(
+    async (content: ChatContent, historyOverride?: ChatMessage[]) => {
+      if (!hasContent(content) || sending) return;
 
       const history = historyOverride ?? messages.filter(message => !message.streaming);
       const requestMessages: ChatMessage[] = [
         ...history,
-        { role: 'user', content: trimmed }
+        { role: 'user', content }
       ];
 
       setMessages([...requestMessages, { role: 'assistant', content: '', streaming: true }]);
@@ -126,6 +132,13 @@ export function useChat(settings: ChatSettings) {
     [messages, sending, settings]
   );
 
+  const run = useCallback(
+    async (text: string, attachments: ChatAttachment[] = [], historyOverride?: ChatMessage[]) => {
+      await runContent(buildUserContent(text, attachments), historyOverride);
+    },
+    [runContent]
+  );
+
   const regenerate = useCallback(async () => {
     if (sending) return;
     const stable = messages.filter(message => !message.streaming);
@@ -138,10 +151,10 @@ export function useChat(settings: ChatSettings) {
     }
     if (lastUserIndex < 0) return;
 
-    const prompt = stable[lastUserIndex].content;
+    const content = stable[lastUserIndex].content;
     const history = stable.slice(0, lastUserIndex);
-    await run(prompt, history);
-  }, [messages, run, sending]);
+    await runContent(content, history);
+  }, [messages, runContent, sending]);
 
   return {
     messages,
