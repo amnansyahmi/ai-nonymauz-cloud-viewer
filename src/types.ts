@@ -1,9 +1,35 @@
 export type AppTab = 'chat' | 'diagnostics' | 'rag' | 'benchmark' | 'image';
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
+export interface ChatTextPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ChatImagePart {
+  type: 'image_url';
+  image_url: {
+    url: string;
+    detail?: 'auto' | 'low' | 'high';
+  };
+}
+
+export type ChatContentPart = ChatTextPart | ChatImagePart;
+export type ChatContent = string | ChatContentPart[];
+
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
+  dataUrl: string;
+}
+
 export interface ChatMessage {
   role: ChatRole;
-  content: string;
+  content: ChatContent;
   streaming?: boolean;
   error?: boolean;
 }
