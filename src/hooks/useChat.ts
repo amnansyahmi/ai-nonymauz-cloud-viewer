@@ -1,9 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
-import { buildUserContent, chatContentImages, chatContentText } from '../chatImages';
+import {
+  buildDisplayAttachments,
+  buildUserContent,
+  chatContentImages,
+  chatContentText
+} from '../chatImages';
 import type {
   ChatAttachment,
   ChatContent,
+  ChatDisplayAttachment,
   ChatMessage,
   ChatSettings,
   ChatStats,
@@ -42,14 +48,22 @@ export function useChat(settings: ChatSettings) {
   }, []);
 
   const runContent = useCallback(
-    async (content: ChatContent, historyOverride?: ChatMessage[]) => {
+    async (
+      content: ChatContent,
+      displayText = '',
+      displayAttachments: ChatDisplayAttachment[] = [],
+      historyOverride?: ChatMessage[]
+    ) => {
       if (!hasContent(content) || sending) return;
 
       const history = historyOverride ?? messages.filter(message => !message.streaming);
-      const requestMessages: ChatMessage[] = [
-        ...history,
-        { role: 'user', content }
-      ];
+      const userMessage: ChatMessage = {
+        role: 'user',
+        content,
+        displayText,
+        displayAttachments
+      };
+      const requestMessages: ChatMessage[] = [...history, userMessage];
 
       setMessages([...requestMessages, { role: 'assistant', content: '', streaming: true }]);
       setMeta({});
@@ -134,7 +148,12 @@ export function useChat(settings: ChatSettings) {
 
   const run = useCallback(
     async (text: string, attachments: ChatAttachment[] = [], historyOverride?: ChatMessage[]) => {
-      await runContent(buildUserContent(text, attachments), historyOverride);
+      await runContent(
+        buildUserContent(text, attachments),
+        text.trim(),
+        buildDisplayAttachments(attachments),
+        historyOverride
+      );
     },
     [runContent]
   );
@@ -151,9 +170,14 @@ export function useChat(settings: ChatSettings) {
     }
     if (lastUserIndex < 0) return;
 
-    const content = stable[lastUserIndex].content;
+    const message = stable[lastUserIndex];
     const history = stable.slice(0, lastUserIndex);
-    await runContent(content, history);
+    await runContent(
+      message.content,
+      message.displayText ?? chatContentText(message.content),
+      message.displayAttachments ?? [],
+      history
+    );
   }, [messages, runContent, sending]);
 
   return {
