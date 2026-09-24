@@ -25,6 +25,31 @@ export default function App() {
   const [health, setHealth] = useState<HealthResponse>();
   const [connectionState, setConnectionState] = useState<'checking' | 'online' | 'offline'>('checking');
   const [connectionMessage, setConnectionMessage] = useState('');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateViewport = () => {
+      document.documentElement.style.setProperty('--mobile-viewport-height', `${viewport.height}px`);
+      const focused = document.activeElement;
+      setKeyboardOpen(
+        (focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement) &&
+        viewport.height < window.innerHeight * 0.8
+      );
+    };
+    updateViewport();
+    viewport.addEventListener('resize', updateViewport);
+    window.addEventListener('focusin', updateViewport);
+    window.addEventListener('focusout', updateViewport);
+    return () => {
+      viewport.removeEventListener('resize', updateViewport);
+      window.removeEventListener('focusin', updateViewport);
+      window.removeEventListener('focusout', updateViewport);
+      document.documentElement.style.removeProperty('--mobile-viewport-height');
+    };
+  }, []);
 
   const updateSettings = useCallback((patch: Partial<ChatSettings>) => {
     setSettings(current => ({ ...current, ...patch }));
@@ -87,7 +112,7 @@ export default function App() {
   }, [health?.knowledge_chunks, models.length, settings.backendUrl]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -100,6 +125,7 @@ export default function App() {
 
       <main className="main-shell">
         <header className="topbar">
+          <div className="mobile-title"><span className="mobile-title-mark">AN</span><strong>AI Nonymauz</strong></div>
           <div className="topbar-context">
             <span className={`top-status ${connectionState}`}><i /></span>
             <span>{topSubtitle}</span>
@@ -111,14 +137,14 @@ export default function App() {
           </div>
         </header>
 
-        {activeTab === 'chat' && (
+        <div hidden={activeTab !== 'chat'}>
           <ChatView
             settings={settings}
             modelOptions={models}
             profiles={profiles}
             onSettingsChange={updateSettings}
           />
-        )}
+        </div>
         {activeTab === 'diagnostics' && <DiagnosticsView settings={settings} />}
         {activeTab === 'rag' && <RagView settings={settings} />}
         {activeTab === 'benchmark' && <BenchmarkView settings={settings} modelOptions={models} />}

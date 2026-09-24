@@ -470,7 +470,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                       }
                     }}
                     onKeyDown={event => {
-                      if (event.key === 'Enter' && !event.shiftKey) {
+                      if (event.key === 'Enter' && !event.shiftKey && !window.matchMedia('(pointer: coarse)').matches) {
                         event.preventDefault();
                         void submit();
                       }
