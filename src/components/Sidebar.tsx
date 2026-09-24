@@ -21,14 +21,15 @@ interface SidebarProps {
 const navItems: Array<{
   id: AppTab;
   label: string;
+  mobileLabel: string;
   description: string;
   icon: typeof ChatIcon;
 }> = [
-  { id: 'chat', label: 'Chat', description: 'Test responses', icon: ChatIcon },
-  { id: 'diagnostics', label: 'Diagnostics', description: 'Runtime health', icon: PulseIcon },
-  { id: 'rag', label: 'RAG Inspector', description: 'Inspect retrieval', icon: SearchIcon },
-  { id: 'benchmark', label: 'Benchmark', description: 'Compare models', icon: CompareIcon },
-  { id: 'image', label: 'Image', description: 'Generation test', icon: ImageIcon }
+  { id: 'chat', label: 'Chat', mobileLabel: 'Chat', description: 'Test responses', icon: ChatIcon },
+  { id: 'diagnostics', label: 'Diagnostics', mobileLabel: 'Health', description: 'Runtime health', icon: PulseIcon },
+  { id: 'rag', label: 'RAG Inspector', mobileLabel: 'RAG', description: 'Inspect retrieval', icon: SearchIcon },
+  { id: 'benchmark', label: 'Benchmark', mobileLabel: 'Compare', description: 'Compare models', icon: CompareIcon },
+  { id: 'image', label: 'Image', mobileLabel: 'Image', description: 'Generation test', icon: ImageIcon }
 ];
 
 export function Sidebar({
@@ -59,10 +60,13 @@ export function Sidebar({
               type="button"
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => onTabChange(item.id)}
+              aria-label={item.label}
+              aria-current={activeTab === item.id ? 'page' : undefined}
             >
               <Icon />
               <span>
-                <b>{item.label}</b>
+                <b className="nav-label-full">{item.label}</b>
+                <b className="nav-label-mobile">{item.mobileLabel}</b>
                 <small>{item.description}</small>
               </span>
             </button>

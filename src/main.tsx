@@ -11,3 +11,11 @@ createRoot(root).render(
     <App />
   </StrictMode>
 );
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // The console can still run in a regular browser tab.
+    });
+  });
+}

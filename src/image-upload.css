@@ -361,7 +361,7 @@
   .composer-icon-button,
   .composer-shell .send-button,
   .composer-shell .stop-button { width: 34px; height: 34px; min-height: 34px; border-radius: 10px; }
-  .composer-wrap .composer-row textarea { min-height: 40px; padding: 9px 4px 7px; font-size: 12px; }
+  .composer-wrap .composer-row textarea { min-height: 40px; padding: 9px 4px 7px; font-size: 16px; }
   .composer-footer { padding: 0 8px 5px 44px; }
   .composer-footer > span:first-child { display: none; }
   .composer-footer > span:last-child { margin-left: auto; }

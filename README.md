@@ -29,6 +29,15 @@ npm run dev
 
 The first install will create `package-lock.json`. Commit that lockfile after installing so subsequent CI/Vercel builds are fully reproducible.
 
+## Android and iPhone
+
+The same viewer runs on desktop, Android and iOS. On a phone it uses a bottom navigation bar, a scrollable chat thread, larger touch controls and safe-area spacing. It is also an installable web app (PWA) from an HTTPS deployment.
+
+- **Android (Chrome):** open the deployed viewer, then choose **Install app** from the browser menu.
+- **iPhone (Safari):** open the deployed viewer, tap **Share**, then **Add to Home Screen**.
+
+The app shell can open after a temporary network interruption. Chat, diagnostics, RAG and image generation still require a connection to the backend. The service worker caches only public interface files; it does not cache prompts, responses, keys or API traffic. Voice input depends on browser support. The API key is stored per browser installation according to the **Remember key on this device** setting.
+
 ## Configuration
 
 Copy `.env.example` to `.env.local` if you want a different default backend:
