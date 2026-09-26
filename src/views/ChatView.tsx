@@ -78,6 +78,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
   const chat = useChat(settings);
   const voice = useVoiceInput(input, setInput);
   const threadRef = useRef<HTMLDivElement | null>(null);
+  const attachmentTouchStartY = useRef<number | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -92,6 +93,15 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
     const element = threadRef.current;
     if (element) element.scrollTop = element.scrollHeight;
   }, [chat.messages]);
+
+  useEffect(() => {
+    if (!attachmentMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAttachmentMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [attachmentMenuOpen]);
 
   async function addImages(files: File[]) {
     const imageFiles = files.filter(isImageFile);
@@ -279,6 +289,12 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                         {message.role === 'user' ? 'You' : 'AI Nonymauz'}
                         {message.streaming && <span className="stream-indicator">streaming</span>}
                       </div>
+                      {message.role === 'assistant' && (message.modelAlias || message.servedBy) && (
+                        <div className="message-model-route">
+                          {message.modelAlias && <span>Alias <code>{message.modelAlias}</code></span>}
+                          {message.servedBy && <span>Served by <code>{message.servedBy}</code></span>}
+                        </div>
+                      )}
 
                       {messageImages.length > 0 && (
                         <div className={`message-image-grid count-${Math.min(messageImages.length, 4)}`}>
@@ -440,21 +456,43 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                       disabled={chat.sending}
                       onClick={() => setAttachmentMenuOpen(open => !open)}
                       aria-label="Add attachment"
+                      aria-expanded={attachmentMenuOpen}
+                      aria-controls="attachment-menu"
                       title="Add attachment"
                     >
                       <PlusIcon />
                     </button>
                     {attachmentMenuOpen && (
-                      <div className="attachment-menu">
-                        <button type="button" onClick={() => imageInputRef.current?.click()} disabled={imageCount >= MAX_CHAT_IMAGES}>
-                          <ImageIcon />
-                          <span><b>Photo or image</b><small>Screenshot, camera or library</small></span>
-                        </button>
-                        <button type="button" onClick={() => documentInputRef.current?.click()} disabled={fileCount >= MAX_CHAT_FILES || processingFiles > 0}>
-                          <FileIcon />
-                          <span><b>Upload file</b><small>PDF, Office, text and code</small></span>
-                        </button>
-                      </div>
+                      <>
+                        <div className="attachment-menu-backdrop" onClick={() => setAttachmentMenuOpen(false)} aria-hidden="true" />
+                        <div
+                          id="attachment-menu"
+                          className="attachment-menu"
+                          role="dialog"
+                          aria-label="Add attachment"
+                          onTouchStart={event => { attachmentTouchStartY.current = event.touches[0]?.clientY ?? null; }}
+                          onTouchEnd={event => {
+                            const startY = attachmentTouchStartY.current;
+                            attachmentTouchStartY.current = null;
+                            if (startY !== null && event.changedTouches[0]?.clientY - startY > 60) setAttachmentMenuOpen(false);
+                          }}
+                          onTouchCancel={() => { attachmentTouchStartY.current = null; }}
+                        >
+                          <div className="attachment-menu-header">
+                            <span className="attachment-menu-handle" aria-hidden="true" />
+                            <b>Add attachment</b>
+                            <button type="button" onClick={() => setAttachmentMenuOpen(false)} aria-label="Close attachment menu">×</button>
+                          </div>
+                          <button type="button" onClick={() => imageInputRef.current?.click()} disabled={imageCount >= MAX_CHAT_IMAGES}>
+                            <ImageIcon />
+                            <span><b>Photo or image</b><small>Screenshot, camera or library</small></span>
+                          </button>
+                          <button type="button" onClick={() => documentInputRef.current?.click()} disabled={fileCount >= MAX_CHAT_FILES || processingFiles > 0}>
+                            <FileIcon />
+                            <span><b>Upload file</b><small>PDF, Office, text and code</small></span>
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
 

@@ -62,6 +62,8 @@ export interface ChatMessage {
   displayAttachments?: ChatDisplayAttachment[];
   streaming?: boolean;
   error?: boolean;
+  modelAlias?: string;
+  servedBy?: string;
 }
 
 export interface KnowledgeSource {
