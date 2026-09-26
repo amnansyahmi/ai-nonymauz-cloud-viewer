@@ -14,7 +14,11 @@ import type {
   OpenAiCompletionResponse,
   ProfilesResponse,
   RagSearchResponse,
-  ResponseMeta
+  ResponseMeta,
+  VideoGenerateRequest,
+  VideoJobResponse,
+  VideoStatusResponse,
+  VideoVariant
 } from '../types';
 
 export const DEFAULT_BACKEND =
@@ -157,6 +161,30 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify({ prompt, style, size })
     });
+  }
+
+  videoStatus(signal?: AbortSignal): Promise<VideoStatusResponse> {
+    return this.json('/v1/video/status', { signal });
+  }
+
+  generateVideo(request: VideoGenerateRequest, signal?: AbortSignal): Promise<VideoJobResponse> {
+    return this.json('/v1/video/generate', {
+      method: 'POST', body: JSON.stringify(request), signal
+    });
+  }
+
+  videoJob(jobId: string, signal?: AbortSignal): Promise<VideoJobResponse> {
+    return this.json(`/v1/video/jobs/${encodeURIComponent(jobId)}`, { signal });
+  }
+
+  async videoFile(jobId: string, variant: VideoVariant, signal?: AbortSignal): Promise<Blob> {
+    const params = new URLSearchParams({ variant });
+    const response = await this.checkedFetch(`/v1/video/jobs/${encodeURIComponent(jobId)}/download?${params}`, { signal });
+    return response.blob();
+  }
+
+  async deleteVideoJob(jobId: string, signal?: AbortSignal): Promise<void> {
+    await this.checkedFetch(`/v1/video/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE', signal });
   }
 
   async streamChat(

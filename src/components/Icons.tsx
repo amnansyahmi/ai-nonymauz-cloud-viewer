@@ -29,6 +29,9 @@ export const CompareIcon = (props: IconProps) => (
 export const ImageIcon = (props: IconProps) => (
   <svg {...common} {...props}><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 20" /></svg>
 );
+export const VideoIcon = (props: IconProps) => (
+  <svg {...common} {...props}><rect x="2.5" y="4" width="19" height="16" rx="2" /><path d="m10 8 6 4-6 4z" /></svg>
+);
 export const FileIcon = (props: IconProps) => (
   <svg {...common} {...props}><path d="M6 2h8l4 4v16H6z" /><path d="M14 2v5h5M9 12h6M9 16h6" /></svg>
 );

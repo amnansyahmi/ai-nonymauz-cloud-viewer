@@ -6,6 +6,7 @@ import { ChatView } from './views/ChatView';
 import { DiagnosticsView } from './views/DiagnosticsView';
 import { ImageView } from './views/ImageView';
 import { RagView } from './views/RagView';
+import { VideoView } from './views/VideoView';
 import { loadSettings, saveSettings } from './storage';
 import type { AppTab, ChatSettings, HealthResponse, ProfilesResponse } from './types';
 
@@ -140,6 +141,7 @@ export default function App() {
         {activeTab === 'rag' && <RagView settings={settings} />}
         {activeTab === 'benchmark' && <BenchmarkView settings={settings} modelOptions={models} />}
         {activeTab === 'image' && <ImageView settings={settings} />}
+        {activeTab === 'video' && <VideoView settings={settings} />}
       </main>
     </div>
   );

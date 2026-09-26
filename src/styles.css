@@ -372,6 +372,51 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .prompt-used { margin: 10px 0 0; color: #69788c; font-size: 8px; line-height: 1.5; }
 .prompt-used b { color: #8997a9; }
 
+/* Video */
+.video-lab { min-width: 0; }
+.video-service { display: flex; align-items: center; gap: 24px; padding: 13px 16px; margin-bottom: 12px; }
+.video-service-heading { display: flex; align-items: center; gap: 10px; min-width: 125px; }
+.video-service-heading span:not(.service-icon), .video-service dt { display: block; color: #6e7f93; font-size: 9px; }
+.video-service-heading b, .video-service dd { display: block; margin: 3px 0 0; color: #bcc8d6; font-size: 11px; font-weight: 650; }
+.video-service dl { display: flex; flex: 1; flex-wrap: wrap; gap: 12px 24px; margin: 0; }
+.video-service dl > div { min-width: 82px; }
+.video-service dd { overflow-wrap: anywhere; }
+.video-lab-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(0, 1.2fr); gap: 12px; }
+.video-form-panel, .video-result-panel { min-width: 0; padding: 18px; }
+.video-form-panel textarea { min-height: 145px; resize: vertical; }
+.video-duration { margin-top: 18px; }
+.video-duration label { flex-direction: row; justify-content: space-between; }
+.video-duration strong { color: #d3e2f0; }
+.video-duration input { width: 100%; margin-top: 8px; min-height: 28px; accent-color: var(--accent); }
+.video-control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; margin-top: 14px; }
+.video-sound { flex-direction: row; align-items: center; gap: 8px; margin-top: 18px; }
+.video-sound input { width: 18px; min-height: 18px; height: 18px; accent-color: var(--accent); }
+.video-sound small { color: var(--muted-2); font-size: 10px; font-weight: 400; }
+.video-generate { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin-top: 16px; }
+.video-result-panel { min-height: 450px; }
+.video-empty { min-height: 410px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #718196; }
+.video-empty svg { width: 34px; height: 34px; }
+.video-empty h2 { margin: 14px 0 4px; color: #b7c4d3; font-size: 17px; }
+.video-empty p { margin: 0; font-size: 11px; }
+.video-result-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.video-result-head h2 { margin: 5px 0 0; font-size: 18px; }
+.video-delete { display: inline-flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+.video-delete:hover:not(:disabled) { border-color: rgba(255,125,140,.45); color: var(--danger); }
+.video-progress-label { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; color: #aab9c9; font-size: 11px; overflow-wrap: anywhere; }
+.video-progress { width: 100%; height: 8px; margin-top: 10px; accent-color: var(--accent); }
+.video-job-id { margin: 12px 0 20px; color: var(--muted-2); font-size: 10px; }
+.video-job-id code { margin-left: 6px; color: #a5d6e9; overflow-wrap: anywhere; }
+.video-output { border-top: 1px solid var(--border); padding-top: 18px; }
+.video-output video { display: block; width: 100%; max-width: 100%; max-height: 68vh; margin: 0 auto; background: #070b10; object-fit: contain; }
+.video-downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.video-downloads button { min-height: 42px; }
+
+@media (max-width: 900px) {
+  .video-lab-grid { grid-template-columns: 1fr; }
+  .video-result-panel { min-height: 300px; }
+  .video-empty { min-height: 280px; }
+}
+
 .spin { animation: spin .75s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { opacity: .4; } }
@@ -485,4 +530,12 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .topbar-context { max-width: 100%; }
   .composer-hint { display: none; }
   .composer-wrap textarea { padding-bottom: 11px; }
+  .video-service { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .video-service dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 12px; }
+  .video-service dl > div { min-width: 0; }
+  .video-control-grid { grid-template-columns: 1fr; }
+  .video-form-panel, .video-result-panel { padding: 14px; }
+  .video-result-head { flex-wrap: wrap; }
+  .video-downloads { flex-direction: column; }
+  .video-downloads button { width: 100%; }
 }
