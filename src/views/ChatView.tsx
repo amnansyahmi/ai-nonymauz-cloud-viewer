@@ -70,6 +70,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
   const [processingFiles, setProcessingFiles] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [runtimeOpen, setRuntimeOpen] = useState(() => (
     typeof window === 'undefined' ? true : window.innerWidth > 620
@@ -224,6 +225,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
               </div>
 
               <div className="toolbar-actions">
+                <button type="button" className="ghost mobile-inspector-button" onClick={() => setInspectorOpen(true)} aria-label="Open chat details">Details</button>
                 <button type="button" className="ghost icon-text" disabled={!hasConversation || chat.sending} onClick={chat.regenerate}>
                   <RepeatIcon /> Regenerate
                 </button>
@@ -517,7 +519,8 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
             </div>
           </div>
 
-          <aside className="inspector-stack">
+          <aside className={`inspector-stack ${inspectorOpen ? 'mobile-open' : ''}`} aria-label="Chat details">
+            <button type="button" className="ghost mobile-inspector-close" onClick={() => setInspectorOpen(false)}>Close details</button>
             <details
               className="panel inspector-card runtime-details"
               open={runtimeOpen}

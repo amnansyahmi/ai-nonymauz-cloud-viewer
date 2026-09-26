@@ -87,7 +87,7 @@ export default function App() {
   }, [health?.knowledge_chunks, models.length, settings.backendUrl]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${activeTab === 'chat' ? 'chat-app-shell' : ''}`}>
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}

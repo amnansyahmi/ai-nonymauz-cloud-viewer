@@ -191,9 +191,11 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .prompt-suggestions { display: grid; width: min(100%, 620px); grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 20px; }
 .prompt-suggestions button { text-align: left; min-height: 76px; padding: 10px; background: #0c121b; color: #8f9db0; font-size: 9px; line-height: 1.5; }
 .prompt-suggestions button:hover { color: #c7d1dd; background: #101824; }
-.message-row { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 11px; padding: 13px 0; }
-.message-row + .message-row { border-top: 1px solid rgba(32,43,59,.45); }
-.message-row.user { margin-top: 4px; }
+.message-row { display: flex; align-items: flex-start; gap: 11px; padding: 13px 0; min-width: 0; }
+.message-row.user { flex-direction: row-reverse; margin-left: auto; }
+.message-row.user .message-content { max-width: min(80%, 680px); width: fit-content; padding: 9px 13px; border: 1px solid #283b52; border-radius: 15px 4px 15px 15px; background: #152335; }
+.message-row.user .message-label { justify-content: flex-end; }
+.message-row.assistant .message-content { flex: 1; }
 .message-avatar { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid #253348; background: #101722; border-radius: 8px; color: #8392a7; font-size: 8px; font-weight: 800; }
 .message-row.assistant .message-avatar { color: #a9eaff; border-color: #28506a; background: #0f202b; }
 .message-row.error .message-avatar { color: #ffc2c9; border-color: rgba(255,125,140,.4); background: rgba(255,125,140,.08); }
@@ -214,9 +216,14 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .markdown-body a:hover { border-color: #8adfff; }
 .markdown-body code:not(pre code) { padding: 2px 5px; border: 1px solid #233145; background: #0b111a; border-radius: 5px; color: #c5e9f6; font-size: .9em; }
 .markdown-body blockquote { margin: 10px 0; padding: 3px 12px; border-left: 2px solid #3e6781; color: #aeb9c8; }
-.markdown-body table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
-.markdown-body th, .markdown-body td { border: 1px solid #243247; padding: 6px 8px; text-align: left; }
+.markdown-table-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; margin: 10px 0; }
+.markdown-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.markdown-body table { width: 100%; min-width: 460px; border-collapse: collapse; font-size: 10px; overflow-wrap: normal; word-break: normal; }
+.markdown-body th, .markdown-body td { min-width: 110px; border: 1px solid #243247; padding: 6px 8px; text-align: left; overflow-wrap: normal; word-break: normal; vertical-align: top; }
+.markdown-body th:first-child, .markdown-body td:first-child { min-width: 115px; }
+.markdown-body a { overflow-wrap: anywhere; }
 .markdown-body th { background: #101824; color: #c6d1de; }
+.mobile-inspector-button, .mobile-inspector-close { display: none; }
 .code-block { position: relative; margin: 10px 0; border: 1px solid #213046; border-radius: 10px; overflow: hidden; background: #080d14; }
 .code-block pre { margin: 0; padding: 14px; padding-top: 32px; overflow: auto; color: #c9d8e8; font-size: 10px; line-height: 1.6; }
 .code-copy { position: absolute; right: 6px; top: 6px; z-index: 1; min-height: 22px; padding: 2px 7px; border-radius: 6px; background: #101824; color: #7f8ea2; font-size: 8px; }
@@ -409,6 +416,25 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 }
 
 @media (max-width: 620px) {
+  .chat-app-shell { height: 100dvh; max-height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+  .chat-app-shell .sidebar, .chat-app-shell .topbar { position: relative; top: auto; flex: 0 0 auto; }
+  .chat-app-shell .sidebar { padding-top: max(8px, env(safe-area-inset-top)); }
+  .chat-app-shell .main-shell { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+  .chat-app-shell .chat-workspace { width: 100%; max-width: none; min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 10px 8px 0; }
+  .chat-app-shell .chat-heading { flex: 0 0 auto; gap: 8px; margin-bottom: 10px; }
+  .chat-app-shell .chat-heading h1 { font-size: 20px; margin: 0; }
+  .chat-app-shell .chat-heading .eyebrow, .chat-app-shell .chat-heading p { display: none; }
+  .chat-app-shell .heading-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .chat-app-shell .chat-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .chat-app-shell .chat-main { min-height: 0; height: 100%; grid-template-rows: auto minmax(0, 1fr) auto; }
+  .chat-app-shell .message-thread { max-height: none; overscroll-behavior: contain; }
+  .chat-app-shell .composer-wrap { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .chat-app-shell input, .chat-app-shell select, .chat-app-shell textarea,
+  .chat-app-shell .composer-wrap .composer-row textarea { font-size: 16px; }
+  .chat-app-shell .inspector-stack { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60; padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom)); overflow-y: auto; background: var(--bg); }
+  .chat-app-shell .inspector-stack.mobile-open { display: flex; }
+  .mobile-inspector-button, .mobile-inspector-close { display: inline-flex; align-items: center; justify-content: center; }
+  .mobile-inspector-close { align-self: flex-end; }
   .sidebar { padding-inline: 8px; }
   .nav-item span { display: none; }
   .nav-item { width: 34px; justify-content: center; padding-inline: 6px; }
@@ -422,7 +448,8 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .toolbar-actions .icon-text svg { margin: 0; }
   .message-thread { padding: 14px 12px; }
   .chat-empty { min-height: 370px; padding-inline: 6px; }
-  .message-row { grid-template-columns: 24px minmax(0,1fr); gap: 8px; }
+  .message-row { gap: 8px; }
+  .message-row.user .message-content { max-width: calc(100% - 42px); }
   .message-avatar { width: 24px; height: 24px; font-size: 7px; }
   .inspector-stack { display: flex; }
   .metric-grid, .diagnostic-grid, .status-cards, .image-control-grid { grid-template-columns: 1fr; }
