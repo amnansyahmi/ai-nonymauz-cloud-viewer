@@ -6,6 +6,7 @@ import { ChatView } from './views/ChatView';
 import { DiagnosticsView } from './views/DiagnosticsView';
 import { ImageView } from './views/ImageView';
 import { RagView } from './views/RagView';
+import { VideoView } from './views/VideoView';
 import { loadSettings, saveSettings } from './storage';
 import type { AppTab, ChatSettings, HealthResponse, ProfilesResponse } from './types';
 
@@ -33,6 +34,23 @@ export default function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const syncHeight = () => {
+      const visibleBottom = viewport.height + viewport.offsetTop;
+      document.documentElement.style.setProperty('--app-viewport-height', `${Math.round(visibleBottom)}px`);
+    };
+    syncHeight();
+    viewport.addEventListener('resize', syncHeight);
+    viewport.addEventListener('scroll', syncHeight);
+    return () => {
+      viewport.removeEventListener('resize', syncHeight);
+      viewport.removeEventListener('scroll', syncHeight);
+      document.documentElement.style.removeProperty('--app-viewport-height');
+    };
+  }, []);
 
   const refreshCore = useCallback(async () => {
     setConnectionState('checking');
@@ -87,7 +105,7 @@ export default function App() {
   }, [health?.knowledge_chunks, models.length, settings.backendUrl]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${activeTab === 'chat' ? 'chat-app-shell' : ''}`}>
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -123,6 +141,7 @@ export default function App() {
         {activeTab === 'rag' && <RagView settings={settings} />}
         {activeTab === 'benchmark' && <BenchmarkView settings={settings} modelOptions={models} />}
         {activeTab === 'image' && <ImageView settings={settings} />}
+        {activeTab === 'video' && <VideoView settings={settings} />}
       </main>
     </div>
   );

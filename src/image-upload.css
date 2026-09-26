@@ -220,6 +220,11 @@
   background: #0c131e;
   box-shadow: 0 18px 50px rgba(0,0,0,.38);
 }
+.attachment-menu-backdrop { position: fixed; inset: 0; z-index: 24; background: rgba(0, 0, 0, .28); }
+.attachment-menu-header { display: flex; align-items: center; gap: 8px; padding: 4px 4px 6px 9px; color: #c3cedb; font-size: 10px; }
+.attachment-menu-header b { flex: 1; }
+.attachment-menu-header button { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; background: transparent; color: #9aacc0; font-size: 22px; line-height: 1; }
+.attachment-menu-handle { display: none; }
 .attachment-menu > button {
   width: 100%;
   min-height: 52px;
@@ -357,15 +362,18 @@
 @media (max-width: 720px) {
   .composer-wrap { padding: 8px; }
   .composer-shell { border-radius: 15px; }
-  .composer-row { grid-template-columns: 36px minmax(0,1fr) auto; padding: 6px; }
+  .composer-row { grid-template-columns: 44px minmax(0,1fr) auto; padding: 6px; }
   .composer-icon-button,
   .composer-shell .send-button,
-  .composer-shell .stop-button { width: 34px; height: 34px; min-height: 34px; border-radius: 10px; }
+  .composer-shell .stop-button { width: 44px; height: 44px; min-height: 44px; border-radius: 10px; }
   .composer-wrap .composer-row textarea { min-height: 40px; padding: 9px 4px 7px; font-size: 12px; }
   .composer-footer { padding: 0 8px 5px 44px; }
   .composer-footer > span:first-child { display: none; }
   .composer-footer > span:last-child { margin-left: auto; }
-  .attachment-menu { position: fixed; left: 10px; bottom: max(18px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); }
+  .attachment-menu { position: fixed; left: 10px; bottom: max(18px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); padding: 8px; border-radius: 18px; }
+  .attachment-menu-header { position: relative; min-height: 40px; padding-top: 12px; font-size: 12px; }
+  .attachment-menu-header button { width: 44px; height: 44px; min-height: 44px; }
+  .attachment-menu-handle { display: block; position: absolute; top: 1px; left: 50%; width: 34px; height: 4px; transform: translateX(-50%); border-radius: 999px; background: #4a5b70; }
   .attachment-card { flex-basis: 175px; }
   .message-image-grid,
   .message-image-grid.count-1 { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 100%; }

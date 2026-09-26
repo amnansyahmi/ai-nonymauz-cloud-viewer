@@ -5,7 +5,8 @@ import {
   ImageIcon,
   PulseIcon,
   SearchIcon,
-  SettingsIcon
+  SettingsIcon,
+  VideoIcon
 } from './Icons';
 
 interface SidebarProps {
@@ -28,7 +29,8 @@ const navItems: Array<{
   { id: 'diagnostics', label: 'Diagnostics', description: 'Runtime health', icon: PulseIcon },
   { id: 'rag', label: 'RAG Inspector', description: 'Inspect retrieval', icon: SearchIcon },
   { id: 'benchmark', label: 'Benchmark', description: 'Compare models', icon: CompareIcon },
-  { id: 'image', label: 'Image', description: 'Generation test', icon: ImageIcon }
+  { id: 'image', label: 'Image', description: 'Generation test', icon: ImageIcon },
+  { id: 'video', label: 'Video', description: 'Motion renders', icon: VideoIcon }
 ];
 
 export function Sidebar({

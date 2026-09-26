@@ -35,6 +35,11 @@ export function MarkdownMessage({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         pre: ({ children }: { children?: ReactNode }) => <PreBlock>{children}</PreBlock>,
+        table: ({ children }: { children?: ReactNode }) => (
+          <div className="markdown-table-scroll" role="region" aria-label="Scrollable table" tabIndex={0}>
+            <table>{children}</table>
+          </div>
+        ),
         a: ({ children, href }: { children?: ReactNode; href?: string }) => (
           <a href={href} target="_blank" rel="noreferrer">
             {children}

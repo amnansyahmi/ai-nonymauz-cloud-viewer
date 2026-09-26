@@ -14,7 +14,11 @@ import type {
   OpenAiCompletionResponse,
   ProfilesResponse,
   RagSearchResponse,
-  ResponseMeta
+  ResponseMeta,
+  VideoGenerateRequest,
+  VideoJobResponse,
+  VideoStatusResponse,
+  VideoVariant
 } from '../types';
 
 export const DEFAULT_BACKEND =
@@ -67,6 +71,11 @@ export function buildChatRequestBody(settings: ChatSettings, messages: ChatMessa
   // profile + dynamic_max_tokens() instead of the old viewer-wide hard cap.
   if (settings.useCustomMaxTokens) body.max_tokens = settings.maxTokens;
   return body;
+}
+
+export interface ChatStreamResult {
+  text: string;
+  finishReason: string | null;
 }
 
 export class ApiClient {
@@ -154,17 +163,42 @@ export class ApiClient {
     });
   }
 
+  videoStatus(signal?: AbortSignal): Promise<VideoStatusResponse> {
+    return this.json('/v1/video/status', { signal });
+  }
+
+  generateVideo(request: VideoGenerateRequest, signal?: AbortSignal): Promise<VideoJobResponse> {
+    return this.json('/v1/video/generate', {
+      method: 'POST', body: JSON.stringify(request), signal
+    });
+  }
+
+  videoJob(jobId: string, signal?: AbortSignal): Promise<VideoJobResponse> {
+    return this.json(`/v1/video/jobs/${encodeURIComponent(jobId)}`, { signal });
+  }
+
+  async videoFile(jobId: string, variant: VideoVariant, signal?: AbortSignal): Promise<Blob> {
+    const params = new URLSearchParams({ variant });
+    const response = await this.checkedFetch(`/v1/video/jobs/${encodeURIComponent(jobId)}/download?${params}`, { signal });
+    return response.blob();
+  }
+
+  async deleteVideoJob(jobId: string, signal?: AbortSignal): Promise<void> {
+    await this.checkedFetch(`/v1/video/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE', signal });
+  }
+
   async streamChat(
     settings: ChatSettings,
     messages: ChatMessage[],
     handlers: {
       onText: (fullText: string) => void;
       onMeta: (meta: ResponseMeta) => void;
+      onModel: (model: string) => void;
       onUsage: (totalTokens: number) => void;
       onFirstToken: () => void;
     },
     signal: AbortSignal
-  ): Promise<string> {
+  ): Promise<ChatStreamResult> {
     const response = await this.checkedFetch('/chat', {
       method: 'POST',
       body: JSON.stringify(buildChatRequestBody(settings, messages)),
@@ -173,9 +207,15 @@ export class ApiClient {
 
     let fullText = '';
     let firstTokenSeen = false;
+    let finishReason: string | null = null;
+    let sawDone = false;
 
     await consumeSse(response, event => {
-      if (!event.data || event.data === '[DONE]') return;
+      if (event.data === '[DONE]') {
+        sawDone = true;
+        return;
+      }
+      if (!event.data) return;
 
       let payload: Record<string, any>;
       try {
@@ -201,7 +241,11 @@ export class ApiClient {
         return;
       }
 
-      const delta = payload.choices?.[0]?.delta?.content;
+      if (typeof payload.model === 'string' && payload.model) handlers.onModel(payload.model);
+
+      const choice = payload.choices?.[0];
+      if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
+      const delta = choice?.delta?.content;
       if (typeof delta === 'string' && delta) {
         if (!firstTokenSeen) {
           firstTokenSeen = true;
@@ -215,7 +259,8 @@ export class ApiClient {
       if (typeof tokens === 'number') handlers.onUsage(tokens);
     });
 
-    return fullText;
+    if (!sawDone) throw new Error('The response stream ended before completion.');
+    return { text: fullText, finishReason };
   }
 
   async openAiCompletion(

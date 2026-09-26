@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
+import { streamWithContinuations } from '../chatContinuation';
 import {
   buildDisplayAttachments,
   buildUserContent,
@@ -77,45 +78,75 @@ export function useChat(settings: ChatSettings) {
       let firstTokenMs: number | undefined;
       let totalTokens: number | undefined;
       let currentMeta: ResponseMeta = {};
+      let completedText = '';
+      let inFlightText = '';
+      let servedBy = '';
+      const servedModels: string[] = [];
 
-      try {
-        const client = new ApiClient(settings.backendUrl, settings.apiKey);
-        const finalText = await client.streamChat(
-          settings,
-          requestMessages,
-          {
-            onText: fullText => {
-              const cleaned = cleanAssistantText(fullText);
-              setMessages([
-                ...requestMessages,
-                { role: 'assistant', content: cleaned, streaming: true }
-              ]);
-            },
-            onMeta: nextMeta => {
-              currentMeta = { ...currentMeta, ...nextMeta };
-              setMeta(currentMeta);
-              if (Array.isArray(nextMeta.sources)) setSources(nextMeta.sources);
-            },
-            onUsage: tokens => {
-              totalTokens = tokens;
-              setStats(previous => ({ ...previous, totalTokens: tokens }));
-            },
-            onFirstToken: () => {
-              if (firstTokenMs !== undefined) return;
-              firstTokenMs = performance.now() - started;
-              setStats(previous => ({ ...previous, firstTokenMs }));
-            }
-          },
-          controller.signal
-        );
-
+      const showAnswer = (content: string, streaming: boolean, error = false) => {
         setMessages([
           ...requestMessages,
           {
             role: 'assistant',
-            content: cleanAssistantText(finalText) || '(empty response)'
+            content: cleanAssistantText(content) || (streaming ? '' : '(empty response)'),
+            streaming,
+            error,
+            modelAlias: currentMeta.model,
+            servedBy
           }
         ]);
+      };
+
+      try {
+        const client = new ApiClient(settings.backendUrl, settings.apiKey);
+        const result = await streamWithContinuations(
+          requestMessages,
+          async (turnMessages, updateText) => {
+            let partTokens: number | undefined;
+            const part = await client.streamChat(
+              settings,
+              turnMessages,
+              {
+                onText: updateText,
+                onMeta: nextMeta => {
+                  currentMeta = { ...currentMeta, ...nextMeta };
+                  setMeta(currentMeta);
+                  if (Array.isArray(nextMeta.sources)) setSources(nextMeta.sources);
+                },
+                onModel: model => {
+                  if (servedModels.includes(model)) return;
+                  servedModels.push(model);
+                  servedBy = servedModels.join(' → ');
+                  currentMeta = { ...currentMeta, served_by: servedBy };
+                  setMeta(currentMeta);
+                  showAnswer(inFlightText, true);
+                },
+                onUsage: tokens => {
+                  partTokens = tokens;
+                  setStats(previous => ({ ...previous, totalTokens: (totalTokens ?? 0) + tokens }));
+                },
+                onFirstToken: () => {
+                  if (firstTokenMs !== undefined) return;
+                  firstTokenMs = performance.now() - started;
+                  setStats(previous => ({ ...previous, firstTokenMs }));
+                }
+              },
+              controller.signal
+            );
+            if (partTokens !== undefined) totalTokens = (totalTokens ?? 0) + partTokens;
+            return part;
+          },
+          text => {
+            inFlightText = text;
+            showAnswer(text, true);
+          },
+          cleanAssistantText
+        );
+
+        completedText = result.text;
+        if (result.hitSafetyLimit) completedText += '\n\n_Response hit the provider output limit. Send “continue” to get the rest._';
+
+        showAnswer(completedText, false);
         setStats({
           firstTokenMs,
           totalMs: performance.now() - started,
@@ -123,19 +154,10 @@ export function useChat(settings: ChatSettings) {
         });
       } catch (error) {
         if (controller.signal.aborted) {
-          setMessages(previous => {
-            const withoutStreaming = previous.filter(message => !message.streaming);
-            return [
-              ...withoutStreaming,
-              { role: 'assistant', content: 'Generation stopped.', error: true }
-            ];
-          });
+          showAnswer(inFlightText ? `${inFlightText}\n\n_Generation stopped._` : 'Generation stopped.', false, true);
         } else {
           const message = error instanceof Error ? error.message : String(error);
-          setMessages([
-            ...requestMessages,
-            { role: 'assistant', content: `Error: ${message}`, error: true }
-          ]);
+          showAnswer(inFlightText ? `${inFlightText}\n\n_Response interrupted: ${message}_` : `Error: ${message}`, false, true);
         }
         setStats(previous => ({ ...previous, totalMs: performance.now() - started }));
       } finally {

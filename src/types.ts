@@ -1,4 +1,4 @@
-export type AppTab = 'chat' | 'diagnostics' | 'rag' | 'benchmark' | 'image';
+export type AppTab = 'chat' | 'diagnostics' | 'rag' | 'benchmark' | 'image' | 'video';
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
 export interface ChatTextPart {
@@ -62,6 +62,8 @@ export interface ChatMessage {
   displayAttachments?: ChatDisplayAttachment[];
   streaming?: boolean;
   error?: boolean;
+  modelAlias?: string;
+  servedBy?: string;
 }
 
 export interface KnowledgeSource {
@@ -145,6 +147,12 @@ export interface HealthResponse {
   mode?: string;
   knowledge_chunks?: number;
   litellm_models?: string[];
+  litellm_deployments?: Array<{
+    alias?: string;
+    model?: string;
+    enabled?: boolean;
+    reason?: string | null;
+  }>;
   vector_rag_enabled?: boolean;
   bm25_rag_enabled?: boolean;
   embedding_rag_enabled?: boolean;
@@ -176,6 +184,49 @@ export interface ImageGenerateResponse {
   prompt_used?: string;
   usage_today?: number;
   daily_limit?: number;
+}
+
+export type VideoAspectRatio = '9:16' | '16:9' | '1:1';
+export type VideoQuality = 'preview' | 'standard';
+export type VideoJobStatus = 'queued' | 'preparing' | 'planning' | 'building' | 'checking' | 'rendering' | 'completed' | 'failed';
+export type VideoVariant = 'compressed' | 'master';
+
+export interface VideoStatusResponse {
+  enabled: boolean;
+  provider?: string;
+  renderer?: string;
+  auth_required?: boolean;
+  auth_ready?: boolean;
+  max_duration_seconds?: number;
+  allowed_aspect_ratios?: VideoAspectRatio[];
+  qualities?: VideoQuality[];
+  sandbox_execution_limit_seconds?: number;
+  sandbox_vcpus?: number;
+  snapshot_configured?: boolean;
+}
+
+export interface VideoGenerateRequest {
+  prompt: string;
+  duration: number;
+  aspect_ratio: VideoAspectRatio;
+  quality: VideoQuality;
+  language: 'ms' | 'en';
+  style: string;
+  sound_effects: boolean;
+}
+
+export interface VideoJobResponse {
+  job_id: string;
+  status: VideoJobStatus;
+  stage?: string;
+  progress?: number;
+  renderer?: string;
+  output_ready?: boolean;
+  compressed_ready?: boolean;
+  output_bytes?: number;
+  compressed_bytes?: number;
+  detail?: string | null;
+  error?: string | null;
 }
 
 export interface RagSearchResponse {
