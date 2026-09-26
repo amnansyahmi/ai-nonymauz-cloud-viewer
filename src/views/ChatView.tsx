@@ -273,7 +273,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                     key={`${message.role}-${index}`}
                     className={`message-row ${message.role} ${message.error ? 'error' : ''}`}
                   >
-                    <div className="message-avatar">{message.role === 'user' ? 'You' : 'AI'}</div>
+                    {message.role === 'assistant' && <div className="message-avatar">AI</div>}
                     <div className="message-content">
                       <div className="message-label">
                         {message.role === 'user' ? 'You' : 'AI Nonymauz'}
