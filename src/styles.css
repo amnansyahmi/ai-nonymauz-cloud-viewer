@@ -265,12 +265,14 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .error-banner { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; padding: 10px 12px; border: 1px solid rgba(255,125,140,.3); border-radius: 10px; background: rgba(255,125,140,.055); color: #ffb4bd; font-size: 10px; line-height: 1.5; }
 .error-banner b { color: #ffd4d9; }
 .error-banner.compact-error { margin-top: 12px; margin-bottom: 0; }
-.table-scroll { overflow: auto; }
+.table-scroll { overflow: auto; -webkit-overflow-scrolling: touch; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 9px; }
 .data-table th { padding: 9px 10px; text-align: left; color: #637286; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); background: rgba(8,13,20,.35); }
 .data-table td { padding: 9px 10px; color: #aeb9c7; border-bottom: 1px solid rgba(32,43,59,.48); }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table code { color: #89cce2; font-size: 8px; }
+.route-model-list { display: flex; flex-direction: column; gap: 4px; min-width: 170px; }
+.route-model-list code { overflow-wrap: anywhere; }
 
 /* Diagnostics */
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 10px; }
@@ -419,7 +421,9 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 }
 
 @media (max-width: 620px) {
-  .chat-app-shell { height: 100dvh; max-height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select:not([multiple]), textarea:not([readonly]) { font-size: 16px; }
+  .chat-app-shell { height: var(--app-viewport-height, 100dvh); max-height: 100dvh; overflow: hidden; overscroll-behavior: none; display: flex; flex-direction: column; }
   .chat-app-shell .sidebar, .chat-app-shell .topbar { position: relative; top: auto; flex: 0 0 auto; }
   .chat-app-shell .sidebar { padding-top: max(8px, env(safe-area-inset-top)); }
   .chat-app-shell .main-shell { min-height: 0; flex: 1; display: flex; flex-direction: column; }
@@ -438,9 +442,22 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .chat-app-shell .inspector-stack.mobile-open { display: flex; }
   .mobile-inspector-button, .mobile-inspector-close { display: inline-flex; align-items: center; justify-content: center; }
   .mobile-inspector-close { align-self: flex-end; }
+  .topbar-context { font-size: 11px; }
+  .nav-item { min-height: 44px; }
+  .nav-item svg { width: 20px; height: 20px; }
+  .toggle-pill { font-size: 11px; padding: 7px 10px; }
+  .toolbar-actions button { min-height: 40px; font-size: 11px; }
+  .message-label, .message-model-route { font-size: 11px; }
+  .markdown-body { font-size: 14px; line-height: 1.6; }
+  .markdown-body table, .code-block pre { font-size: 12px; }
+  .chat-empty > p, .prompt-suggestions button { font-size: 13px; }
+  .data-table { min-width: 740px; font-size: 12px; }
+  .data-table th { font-size: 10px; }
+  .data-table code, .model-chip-grid code, .file-list code { font-size: 11px; }
+  .route-model-list { min-width: 200px; }
   .sidebar { padding-inline: 8px; }
   .nav-item span { display: none; }
-  .nav-item { width: 34px; justify-content: center; padding-inline: 6px; }
+  .nav-item { width: 42px; justify-content: center; padding-inline: 6px; }
   .topbar { padding: 0 12px; }
   .workspace { padding: 18px 11px 28px; }
   .page-heading { align-items: flex-start; flex-direction: column; margin-bottom: 16px; }

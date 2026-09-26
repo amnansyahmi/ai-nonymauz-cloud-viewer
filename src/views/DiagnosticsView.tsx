@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiClient } from '../api/client';
 import { RefreshIcon } from '../components/Icons';
+import { configuredModels } from '../modelRouting';
 import type {
   ChatSettings,
   HealthResponse,
@@ -160,21 +161,32 @@ export function DiagnosticsView({ settings }: DiagnosticsViewProps) {
           </div>
           <div className="table-scroll">
             <table className="data-table">
-              <thead><tr><th>Mode</th><th>Model</th><th>Temp</th><th>Max tokens</th><th>RAG K</th><th>RAG default</th></tr></thead>
+              <thead><tr><th>Mode</th><th>Alias</th><th>Configured provider model</th><th>Temp</th><th>Max tokens</th><th>RAG K</th><th>RAG default</th></tr></thead>
               <tbody>
-                {profileEntries.map(([name, profile]) => (
-                  <tr key={name}>
-                    <td><b>{name}</b></td>
-                    <td><code>{profile.model ?? '—'}</code></td>
-                    <td>{profile.temperature ?? '—'}</td>
-                    <td>{profile.max_tokens ?? '—'}</td>
-                    <td>{profile.rag_top_k ?? '—'}</td>
-                    <td>{yesNo(profile.use_rag_default)}</td>
-                  </tr>
-                ))}
+                {profileEntries.map(([name, profile]) => {
+                  const providerModels = configuredModels(data.health, profile.model ?? '');
+                  return (
+                    <tr key={name}>
+                      <td><b>{name}</b></td>
+                      <td><code>{profile.model ?? '—'}</code></td>
+                      <td>
+                        <div className="route-model-list">
+                          {providerModels.length
+                            ? providerModels.map(model => <code key={model}>{model}</code>)
+                            : <span title="No enabled deployment mapping returned by /health">—</span>}
+                        </div>
+                      </td>
+                      <td>{profile.temperature ?? '—'}</td>
+                      <td>{profile.max_tokens ?? '—'}</td>
+                      <td>{profile.rag_top_k ?? '—'}</td>
+                      <td>{yesNo(profile.use_rag_default)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          <p className="muted-copy">Configured active deployments from /health. The model actually used for a reply can differ after routing or fallback; see “Served by” on that reply.</p>
         </div>
 
         <div className="panel diagnostic-panel">

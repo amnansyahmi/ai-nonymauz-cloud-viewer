@@ -34,6 +34,23 @@ export default function App() {
     saveSettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const syncHeight = () => {
+      const visibleBottom = viewport.height + viewport.offsetTop;
+      document.documentElement.style.setProperty('--app-viewport-height', `${Math.round(visibleBottom)}px`);
+    };
+    syncHeight();
+    viewport.addEventListener('resize', syncHeight);
+    viewport.addEventListener('scroll', syncHeight);
+    return () => {
+      viewport.removeEventListener('resize', syncHeight);
+      viewport.removeEventListener('scroll', syncHeight);
+      document.documentElement.style.removeProperty('--app-viewport-height');
+    };
+  }, []);
+
   const refreshCore = useCallback(async () => {
     setConnectionState('checking');
     setConnectionMessage('');

@@ -147,6 +147,12 @@ export interface HealthResponse {
   mode?: string;
   knowledge_chunks?: number;
   litellm_models?: string[];
+  litellm_deployments?: Array<{
+    alias?: string;
+    model?: string;
+    enabled?: boolean;
+    reason?: string | null;
+  }>;
   vector_rag_enabled?: boolean;
   bm25_rag_enabled?: boolean;
   embedding_rag_enabled?: boolean;

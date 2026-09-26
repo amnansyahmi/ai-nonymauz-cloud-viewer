@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
+import { streamWithContinuations } from '../chatContinuation';
 import {
   buildDisplayAttachments,
   buildUserContent,
@@ -18,8 +19,6 @@ import type {
 } from '../types';
 
 const emptyStats: ChatStats = {};
-const MAX_AUTO_CONTINUATIONS = 8;
-const CONTINUE_PROMPT = 'Continue the previous answer exactly where it stopped. Do not repeat earlier text. Finish the remaining content naturally.';
 
 function cleanAssistantText(value: string): string {
   return value.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trimStart();
@@ -100,61 +99,52 @@ export function useChat(settings: ChatSettings) {
 
       try {
         const client = new ApiClient(settings.backendUrl, settings.apiKey);
-        for (let continuation = 0; ; continuation += 1) {
-          const priorText = completedText;
-          inFlightText = priorText;
-          let partTokens: number | undefined;
-          const turnMessages: ChatMessage[] = continuation === 0
-            ? requestMessages
-            : [
-                ...requestMessages,
-                { role: 'assistant', content: priorText },
-                { role: 'user', content: CONTINUE_PROMPT }
-              ];
+        const result = await streamWithContinuations(
+          requestMessages,
+          async (turnMessages, updateText) => {
+            let partTokens: number | undefined;
+            const part = await client.streamChat(
+              settings,
+              turnMessages,
+              {
+                onText: updateText,
+                onMeta: nextMeta => {
+                  currentMeta = { ...currentMeta, ...nextMeta };
+                  setMeta(currentMeta);
+                  if (Array.isArray(nextMeta.sources)) setSources(nextMeta.sources);
+                },
+                onModel: model => {
+                  if (servedModels.includes(model)) return;
+                  servedModels.push(model);
+                  servedBy = servedModels.join(' → ');
+                  currentMeta = { ...currentMeta, served_by: servedBy };
+                  setMeta(currentMeta);
+                  showAnswer(inFlightText, true);
+                },
+                onUsage: tokens => {
+                  partTokens = tokens;
+                  setStats(previous => ({ ...previous, totalTokens: (totalTokens ?? 0) + tokens }));
+                },
+                onFirstToken: () => {
+                  if (firstTokenMs !== undefined) return;
+                  firstTokenMs = performance.now() - started;
+                  setStats(previous => ({ ...previous, firstTokenMs }));
+                }
+              },
+              controller.signal
+            );
+            if (partTokens !== undefined) totalTokens = (totalTokens ?? 0) + partTokens;
+            return part;
+          },
+          text => {
+            inFlightText = text;
+            showAnswer(text, true);
+          },
+          cleanAssistantText
+        );
 
-          const result = await client.streamChat(
-            settings,
-            turnMessages,
-            {
-              onText: fullText => {
-                inFlightText = priorText + fullText;
-                showAnswer(inFlightText, true);
-              },
-              onMeta: nextMeta => {
-                currentMeta = { ...currentMeta, ...nextMeta };
-                setMeta(currentMeta);
-                if (Array.isArray(nextMeta.sources)) setSources(nextMeta.sources);
-              },
-              onModel: model => {
-                if (servedModels.includes(model)) return;
-                servedModels.push(model);
-                servedBy = servedModels.join(' → ');
-                currentMeta = { ...currentMeta, served_by: servedBy };
-                setMeta(currentMeta);
-                showAnswer(inFlightText, true);
-              },
-              onUsage: tokens => {
-                partTokens = tokens;
-                setStats(previous => ({ ...previous, totalTokens: (totalTokens ?? 0) + tokens }));
-              },
-              onFirstToken: () => {
-                if (firstTokenMs !== undefined) return;
-                firstTokenMs = performance.now() - started;
-                setStats(previous => ({ ...previous, firstTokenMs }));
-              }
-            },
-            controller.signal
-          );
-
-          completedText = cleanAssistantText(priorText + result.text);
-          if (partTokens !== undefined) totalTokens = (totalTokens ?? 0) + partTokens;
-          if (!['length', 'max_tokens'].includes(result.finishReason ?? '')) break;
-          if (!result.text.trim() || continuation >= MAX_AUTO_CONTINUATIONS) {
-            completedText += '\n\n_Response hit the provider output limit. Send “continue” to get the rest._';
-            break;
-          }
-          showAnswer(completedText, true);
-        }
+        completedText = result.text;
+        if (result.hitSafetyLimit) completedText += '\n\n_Response hit the provider output limit. Send “continue” to get the rest._';
 
         showAnswer(completedText, false);
         setStats({
