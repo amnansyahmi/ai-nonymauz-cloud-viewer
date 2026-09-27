@@ -48,6 +48,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [preparingImage, setPreparingImage] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [cuttingImage, setCuttingImage] = useState('');
+  const [savedJobs, setSavedJobs] = useState<Array<{ job_id: string; sandbox_status: string }>>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
 
   const refreshStatus = useCallback(async (signal?: AbortSignal) => {
@@ -73,6 +75,20 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       if (!signal?.aborted) setStatusLoading(false);
     }
   }, [client]);
+
+  const refreshJobs = useCallback(async () => {
+    if (!settings.apiKey.trim()) return;
+    setJobsLoading(true);
+    try {
+      setSavedJobs((await client.videoJobs()).jobs);
+    } catch (reason) {
+      setImageError(`Could not list stored video jobs: ${videoError(reason)}`);
+    } finally {
+      setJobsLoading(false);
+    }
+  }, [client, settings.apiKey]);
+
+  useEffect(() => { void refreshJobs(); }, [refreshJobs]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -244,6 +260,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, next.job_id);
       setJob(next);
       setJobId(next.job_id);
+      void refreshJobs();
     } catch (reason) {
       setError(videoError(reason));
     } finally {
@@ -285,6 +302,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       setJobId('');
       setJob(undefined);
       setNotice('Render job deleted.');
+      void refreshJobs();
     } catch (reason) {
       if (reason instanceof Error && /HTTP 404/.test(reason.message)) {
         sessionStorage.removeItem(VIDEO_JOB_STORAGE_KEY);
@@ -292,6 +310,22 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
         setJob(undefined);
         setNotice('Render job is no longer available. Local record cleared.');
       } else setError(videoError(reason));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deleteStoredJob(id: string) {
+    if (id === jobId) { await deleteJob(); return; }
+    if (deleting || !window.confirm(`Delete video job ${id} and its saved files? Download it first if needed.`)) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await client.deleteVideoJob(id);
+      setSavedJobs(previous => previous.filter(item => item.job_id !== id));
+      setNotice(`Deleted ${id} and its Sandbox.`);
+    } catch (reason) {
+      setError(videoError(reason));
     } finally {
       setDeleting(false);
     }
@@ -491,6 +525,23 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           {!jobId && error && <div className="error-banner compact-error"><span>{error}</span></div>}
           {notice && <p className="muted-copy" role="status">{notice}</p>}
         </div>
+      </div>
+      <div className="panel video-history">
+        <div className="video-image-heading"><div><b>Stored video jobs</b><span>{savedJobs.length} jobs · delete finished jobs after downloading</span></div>
+          <button type="button" className="secondary" onClick={() => void refreshJobs()} disabled={jobsLoading || !settings.apiKey.trim()}>
+            <RefreshIcon /> {jobsLoading ? 'Checking…' : 'Refresh jobs'}
+          </button>
+        </div>
+        {savedJobs.map(item => <div className="video-history-row" key={item.job_id}>
+          <span><code>{item.job_id}</code> · {item.sandbox_status}</span>
+          <div className="video-image-actions">
+            <button type="button" className="secondary" onClick={() => {
+              sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, item.job_id);
+              setJob(undefined); setJobId(item.job_id);
+            }}>Open</button>
+            <button type="button" className="secondary" disabled={deleting} onClick={() => void deleteStoredJob(item.job_id)}>Delete</button>
+          </div>
+        </div>)}
       </div>
     </section>
   );
