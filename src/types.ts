@@ -204,6 +204,7 @@ export interface VideoStatusResponse {
   sandbox_vcpus?: number;
   snapshot_configured?: boolean;
   image_input_enabled?: boolean;
+  auto_storyboard_enabled?: boolean;
   max_images?: number;
   max_image_bytes?: number;
   max_total_image_bytes?: number;
@@ -224,8 +225,26 @@ export interface VideoGenerateRequest {
   language: 'ms' | 'en';
   style: string;
   sound_effects: boolean;
+  creative_mode: 'auto' | 'template';
   title?: string;
   images?: VideoImageInput[];
+}
+
+export interface VideoStoryboardScene {
+  kind: 'hero' | 'screen' | 'workflow' | 'stat' | 'outro';
+  kicker: string;
+  headline: string;
+  support: string;
+  details: string[];
+  action: string;
+  image_index: number | null;
+}
+
+export interface VideoStoryboard {
+  concept: string;
+  theme: 'dark' | 'light';
+  accent: string;
+  scenes: VideoStoryboardScene[];
 }
 
 export interface VideoJobResponse {
@@ -240,6 +259,8 @@ export interface VideoJobResponse {
   compressed_bytes?: number;
   detail?: string | null;
   error?: string | null;
+  storyboard?: VideoStoryboard | null;
+  storyboard_model?: string | null;
 }
 
 export interface RagSearchResponse {

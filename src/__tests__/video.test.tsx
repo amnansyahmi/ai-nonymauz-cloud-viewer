@@ -14,7 +14,7 @@ describe('Video Lab', () => {
     expect(tab).toBe('video');
     expect(DEFAULT_VIDEO_REQUEST).toMatchObject({
       duration: 10, aspect_ratio: '9:16', quality: 'preview',
-      language: 'ms', sound_effects: false
+      language: 'ms', sound_effects: false, creative_mode: 'auto'
     });
   });
 

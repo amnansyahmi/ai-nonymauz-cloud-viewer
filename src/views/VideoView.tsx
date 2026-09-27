@@ -285,7 +285,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
         <div>
           <span className="eyebrow">Multimodal</span>
           <h1>Video Lab</h1>
-          <p>Create and inspect Motion Video render jobs in Vercel Sandbox.</p>
+          <p>Turn a brief into an AI-directed storyboard, animated product mockup, and MP4.</p>
         </div>
         <button className="secondary icon-text" type="button" onClick={() => void refreshStatus()} disabled={statusLoading}>
           <RefreshIcon className={statusLoading ? 'spin' : ''} /> Refresh status
@@ -312,12 +312,19 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
       <div className="video-lab-grid">
         <div className="panel video-form-panel">
+          <label>Video direction
+            <select value={form.creative_mode} onChange={event => update('creative_mode', event.target.value as 'auto' | 'template')}>
+              <option value="auto" disabled={status?.auto_storyboard_enabled === false}>AI storyboard &amp; mockup</option>
+              <option value="template">Simple template</option>
+            </select>
+          </label>
+          <p className="field-help">AI mode plans the story and writes each screen. Reference images are optional.</p>
           <label>
-            Prompt
+            Video brief
             <textarea rows={6} value={form.prompt} onChange={event => update('prompt', event.target.value)} />
           </label>
           <div className="video-image-section">
-            <div className="video-image-heading"><div><b>Images</b><span>{images.length} / {Math.min(status?.max_images ?? MAX_VIDEO_IMAGES, MAX_VIDEO_IMAGES)} scenes</span></div>
+            <div className="video-image-heading"><div><b>Reference images</b><span>{images.length} / {Math.min(status?.max_images ?? MAX_VIDEO_IMAGES, MAX_VIDEO_IMAGES)} images</span></div>
               <button type="button" className="secondary" onClick={() => imageInput.current?.click()}
                 disabled={preparingImage || generatingImage || images.length >= MAX_VIDEO_IMAGES || Boolean(jobId) || status?.image_input_enabled === false}>
                 <ImageIcon /> {preparingImage ? 'Preparing…' : 'Add images'}
@@ -327,13 +334,13 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
             </div>
             {status?.image_input_enabled === false && <p className="field-help">Image scenes require the updated backend.</p>}
             {images.length > 0 && <>
-              <label className="video-image-title">Video title <small>Optional, appears on each image scene</small>
+              <label className="video-image-title">Video title <small>Optional product name</small>
                 <input value={form.title ?? ''} maxLength={72} onChange={event => update('title', event.target.value)} placeholder="e.g. Our new collection" />
               </label>
               <div className="video-image-list">{images.map((image, index) => <div className="video-image-row" key={image.id}>
                 <img src={image.data_url} alt={`Scene ${index + 1}: ${image.name}`} />
                 <div className="video-image-fields">
-                  <div className="video-image-row-head"><b>Scene {index + 1}</b><span>{formatBytes(image.sizeBytes)}</span></div>
+                  <div className="video-image-row-head"><b>Image {index + 1}</b><span>{formatBytes(image.sizeBytes)}</span></div>
                   <label>Caption <input maxLength={80} value={image.caption} placeholder="Optional"
                     onChange={event => editImage(image.id, { caption: event.target.value })} /></label>
                   <label>Framing <select value={image.fit} onChange={event => editImage(image.id, { fit: event.target.value as 'contain' | 'cover' })}>
@@ -392,7 +399,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           <p className="field-help">Standard quality uses more render compute.</p>
           <button className="primary video-generate" type="button" onClick={() => void generate()}
             disabled={!ready || !form.prompt.trim() || submitting || preparingImage || generatingImage || Boolean(jobId) || (images.length > 0 && status?.image_input_enabled !== true)}>
-            <VideoIcon /> {submitting ? 'Starting render…' : 'Generate video'}
+            <VideoIcon /> {submitting ? form.creative_mode === 'auto' ? 'Planning storyboard…' : 'Starting render…' : 'Generate video'}
           </button>
           {jobId && <p className="field-help">Delete the current job before starting another render.</p>}
         </div>
@@ -412,6 +419,15 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               <div className="video-progress-label"><span>{job?.stage || (job ? VIDEO_STAGE_LABELS[job.status] : 'Checking status')}</span><b>{progress}%</b></div>
               <progress className="video-progress" value={progress} max={100} aria-label="Render progress" />
               <p className="video-job-id">Job ID <code>{jobId}</code></p>
+              {job?.storyboard && <section className="video-storyboard" aria-label="AI storyboard">
+                <div className="video-storyboard-heading"><b>AI storyboard</b><span>{job.storyboard_model}</span></div>
+                <p>{job.storyboard.concept}</p>
+                <ol>{job.storyboard.scenes.map((scene, index) => <li key={index}>
+                  <small>{scene.kind}{scene.image_index !== null ? ` · reference ${scene.image_index + 1}` : ''}</small>
+                  <strong>{scene.headline}</strong><span>{scene.support}</span>
+                  {scene.details.length > 0 && <em>{scene.details.join(' · ')}</em>}
+                </li>)}</ol>
+              </section>}
               {job?.status === 'failed' && <div className="error-banner"><b>Render failed</b><span>{(job.error || job.detail || 'Check the backend render job.').slice(0, 350)}</span></div>}
               {busy && <p className="muted-copy">Rendering continues on the backend. Status updates every 2 seconds.</p>}
               {job?.status === 'completed' && (
