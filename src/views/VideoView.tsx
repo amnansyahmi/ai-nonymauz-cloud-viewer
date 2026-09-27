@@ -47,6 +47,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [imageError, setImageError] = useState('');
   const [preparingImage, setPreparingImage] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [cuttingImage, setCuttingImage] = useState('');
   const imageInput = useRef<HTMLInputElement>(null);
 
   const refreshStatus = useCallback(async (signal?: AbortSignal) => {
@@ -200,6 +201,26 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setImages(previous => previous.map(image => image.id === id ? { ...image, ...change } : image));
   }
 
+  async function makeDepthCutout(image: VideoImageDraft) {
+    if (cuttingImage || jobId) return;
+    setCuttingImage(image.id);
+    setImageError('');
+    try {
+      // The quantized model runs on the device. The first use downloads its
+      // weights; no image generation quota or Sandbox time is consumed.
+      const { removeBackground } = await import('@imgly/background-removal');
+      const source = await (await fetch(image.data_url)).blob();
+      const cutout = await removeBackground(source, { model: 'isnet_quint8', device: 'cpu' });
+      const prepared = await prepareVideoImage(new File([cutout], image.name.replace(/\.[^.]+$/, '') + '-cutout.png', { type: 'image/png' }));
+      setImages(previous => previous.map(item => item.id === image.id
+        ? { ...prepared, id: item.id, caption: item.caption, fit: 'contain' } : item));
+    } catch (reason) {
+      setImageError(`Could not create a depth cutout: ${videoError(reason)} Your original image is still available.`);
+    } finally {
+      setCuttingImage('');
+    }
+  }
+
   function moveImage(index: number, offset: number) {
     setImages(previous => {
       const copy = [...previous];
@@ -209,7 +230,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   }
 
   async function generate() {
-    if (submitting || preparingImage || generatingImage || jobId || !form.prompt.trim() || status?.enabled !== true || status.auth_ready === false || (status.auth_required && !settings.apiKey.trim())) return;
+    if (submitting || preparingImage || generatingImage || cuttingImage || jobId || !form.prompt.trim() || status?.enabled !== true || status.auth_ready === false || (status.auth_required && !settings.apiKey.trim())) return;
     if (images.length && (status.image_input_enabled !== true || form.duration < images.length * 3)) {
       setImageError('Image scenes require an updated backend and at least 3 seconds per image.');
       return;
@@ -303,8 +324,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           <div><dt>Renderer</dt><dd>{status?.renderer ?? '—'}</dd></div>
           <div><dt>Max duration</dt><dd>{status?.max_duration_seconds ?? '—'} sec</dd></div>
           <div><dt>Compute</dt><dd>{status?.sandbox_vcpus ?? '—'} vCPU</dd></div>
-          <div><dt>Snapshot</dt><dd>{status?.snapshot_configured ? 'Ready' : 'Not configured'}</dd></div>
+          <div><dt>Base image cache</dt><dd>{status?.snapshot_configured ? 'Ready' : 'Not configured'}</dd></div>
         </dl>
+        <p className="field-help">Download finished videos within 24 hours and delete completed jobs to free Sandbox storage.</p>
       </div>
       {statusError && <div className="error-banner"><span>{statusError}</span></div>}
       {status?.enabled === false && <div className="error-banner"><span>Video generation is currently disabled on the backend.</span></div>}
@@ -348,6 +370,10 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                     <option value="contain">Fit full image</option><option value="cover">Fill frame / crop</option>
                   </select></label>
                   <div className="video-image-actions">
+                    <button type="button" className="secondary" disabled={Boolean(jobId) || Boolean(cuttingImage)}
+                      onClick={() => void makeDepthCutout(image)}>
+                      {cuttingImage === image.id ? 'Removing background…' : 'Make depth cutout'}
+                    </button>
                     <button type="button" className="secondary" aria-label={`Move scene ${index + 1} earlier`} disabled={index === 0 || Boolean(jobId)} onClick={() => moveImage(index, -1)}>↑</button>
                     <button type="button" className="secondary" aria-label={`Move scene ${index + 1} later`} disabled={index === images.length - 1 || Boolean(jobId)} onClick={() => moveImage(index, 1)}>↓</button>
                     <button type="button" className="secondary" disabled={Boolean(jobId)} onClick={() => setImages(previous => previous.filter(item => item.id !== image.id))}>Remove</button>
@@ -355,6 +381,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 </div>
               </div>)}</div>
             </>}
+            {images.length > 0 && <p className="field-help">Depth cutout runs on your device at no API cost. First use downloads an approximately 40 MB model; review the result before rendering. Original photos also work without a cutout.</p>}
             {images.length < MAX_VIDEO_IMAGES && <div className="video-image-generate">
               <label>Generate an image for a scene <input value={imagePrompt} onChange={event => setImagePrompt(event.target.value)}
                 placeholder="Image description (or use video prompt)" /></label>
