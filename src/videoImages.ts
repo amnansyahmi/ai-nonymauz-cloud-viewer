@@ -21,9 +21,9 @@ function toDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+function toBlob(canvas: HTMLCanvasElement, quality: number, type = 'image/jpeg'): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not prepare the image.')), 'image/jpeg', quality);
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not prepare the image.')), type, quality);
   });
 }
 
@@ -57,10 +57,14 @@ export async function prepareVideoImage(file: File): Promise<VideoImageDraft> {
       canvas.height = Math.max(1, Math.round(image.naturalHeight * factor));
       const context = canvas.getContext('2d');
       if (!context) throw new Error('Your browser could not resize the image.');
-      context.fillStyle = '#ffffff';
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      // PNG/WebP cutouts must keep their alpha when resized for the upload cap.
+      if (iosPhoto || file.type === 'image/jpeg') {
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      output = await toBlob(canvas, Math.max(0.58, 0.84 - attempt * 0.06));
+      output = await toBlob(canvas, Math.max(0.58, 0.84 - attempt * 0.06),
+        iosPhoto || file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp');
       if (output.size <= MAX_VIDEO_IMAGE_BYTES) break;
       longest = Math.max(480, Math.round(longest * 0.75));
     }
