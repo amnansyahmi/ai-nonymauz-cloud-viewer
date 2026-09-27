@@ -80,6 +80,8 @@ Import the repository as a Vite project. `vercel.json` already points Vercel at 
 
 Set `VITE_BACKEND_URL` in Vercel only if the backend URL differs from the default. Never put the backend master key in Vercel as a `VITE_*` variable.
 
+Video Lab's optional "Make depth cutout" uses [IMG.LY background-removal-js](https://github.com/imgly/background-removal-js) in the browser under its [AGPL-3.0 license](https://github.com/imgly/background-removal-js/blob/main/LICENSE.md). The first use downloads its model and WebAssembly assets from IMG.LY; inference itself uses the viewer's device rather than a paid image API. The cutout remains subject to the 768 KB image upload cap. Review the cutout before rendering, since product labels and translucent packaging may segment imperfectly.
+
 ## Repository hygiene
 
 Generated `dist/` output and old packaged ZIP artifacts should not be committed. The old parallel vanilla-JS tester has also been removed; `src/main.tsx` is now the single application entry point.
