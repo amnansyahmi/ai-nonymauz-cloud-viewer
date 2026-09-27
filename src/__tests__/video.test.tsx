@@ -54,6 +54,10 @@ describe('Video Lab', () => {
     expect(html).toContain('Loading job');
     expect(videoError(new Error('HTTP 401: unauthorized'))).toMatch(/API key/);
     expect(videoError(new Error('HTTP 429: quota'))).toMatch(/quota/);
+    expect(videoError(new Error('HTTP 503: Storyboard providers are temporarily unavailable.')))
+      .toContain('Storyboard providers are temporarily unavailable.');
+    expect(videoError(new Error('HTTP 403: Forbidden by deployment firewall.')))
+      .toContain('Forbidden by deployment firewall.');
   });
 
   it('sends ordered image scenes without UI-only fields', async () => {
