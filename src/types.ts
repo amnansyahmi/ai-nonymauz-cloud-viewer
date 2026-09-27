@@ -252,6 +252,7 @@ export interface VideoStoryboard {
 export interface VideoJobResponse {
   job_id: string;
   status: VideoJobStatus;
+  temporary?: boolean;
   stage?: string;
   progress?: number;
   renderer?: string;
