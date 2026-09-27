@@ -572,3 +572,7 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .video-image-row { grid-template-columns: 70px minmax(0,1fr); gap: 8px; padding: 8px; }
   .video-image-row > img { width: 70px; height: 88px; }
 }
+.video-history { margin-top:1.2rem; }
+.video-history-row { display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:.75rem; padding:.85rem 0; border-top:1px solid var(--border, #253347); }
+.video-history-row code { overflow-wrap:anywhere; }
