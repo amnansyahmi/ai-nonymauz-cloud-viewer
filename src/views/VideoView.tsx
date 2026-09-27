@@ -458,6 +458,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           </div>
           <label className="video-sound"><input type="checkbox" checked={form.sound_effects}
             onChange={event => update('sound_effects', event.target.checked)} /> Sound effects <small>May add render time</small></label>
+          <label className="video-sound"><input type="checkbox" checked={form.voice_over}
+            onChange={event => update('voice_over', event.target.checked)} /> AI voice-over <small>Uses Gemini free-tier TTS quota; Malay or English narration</small></label>
           <p className="field-help">Standard quality uses more render compute.</p>
           <button className="primary video-generate" type="button" onClick={() => void generate()}
             disabled={!ready || !form.prompt.trim() || submitting || preparingImage || generatingImage || Boolean(jobId) || (images.length > 0 && status?.image_input_enabled !== true)}>
