@@ -29,7 +29,10 @@ export const VIDEO_STAGE_LABELS: Record<VideoJobStatus, string> = {
 export function videoError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/HTTP 401/.test(message)) return 'Missing or invalid API key. Check Connection settings.';
-  if (/HTTP (403|503)/.test(message)) return 'Video service is unavailable or disabled on the backend.';
+  // The public status endpoint can be Ready while storyboard planning fails.
+  // Keep the backend's error detail so the user can tell quota, provider,
+  // configuration and permission failures apart.
+  if (/HTTP (403|503)/.test(message)) return message.slice(0, 350);
   if (/HTTP 409/.test(message)) return 'Video is not ready yet. Try again when rendering finishes.';
   if (/HTTP 429/.test(message)) return 'Video quota or rate limit reached. Try again later.';
   return message.slice(0, 350);
