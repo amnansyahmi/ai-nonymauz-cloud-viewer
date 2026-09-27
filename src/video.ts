@@ -7,7 +7,7 @@ export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
   quality: 'preview',
   language: 'ms',
   style: 'premium-dark',
-  sound_effects: false,
+  sound_effects: true,
   creative_mode: 'auto',
   title: '',
   images: []

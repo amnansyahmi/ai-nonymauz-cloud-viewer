@@ -155,7 +155,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       throw new Error('The prepared images exceed the 2 MB total. Use smaller images.');
     }
     setImages([...images, ...next]);
-    setForm(previous => ({ ...previous, duration: Math.max(previous.duration, (images.length + next.length) * 3) }));
+    setForm(previous => ({ ...previous, creative_mode: 'auto', duration: Math.max(previous.duration, (images.length + next.length) * 3) }));
   }
 
   async function addFiles(files: FileList | null) {
@@ -218,7 +218,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setError('');
     setNotice('');
     try {
-      const next = await client.generateVideo({ ...form, prompt: form.prompt.trim(), images: videoImagePayload(images) });
+      const next = await client.generateVideo({ ...form, creative_mode: images.length ? 'auto' : form.creative_mode,
+        prompt: form.prompt.trim(), images: videoImagePayload(images) });
       sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, next.job_id);
       setJob(next);
       setJobId(next.job_id);
@@ -315,10 +316,10 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           <label>Video direction
             <select value={form.creative_mode} onChange={event => update('creative_mode', event.target.value as 'auto' | 'template')}>
               <option value="auto" disabled={status?.auto_storyboard_enabled === false}>AI storyboard &amp; mockup</option>
-              <option value="template">Simple template</option>
+              <option value="template" disabled={images.length > 0}>Simple template · text only</option>
             </select>
           </label>
-          <p className="field-help">AI mode plans the story and writes each screen. Reference images are optional.</p>
+          <p className="field-help">AI plans the storyboard and directs each scene. Product photos become moving, image-led scenes.</p>
           <label>
             Video brief
             <textarea rows={6} value={form.prompt} onChange={event => update('prompt', event.target.value)} />
@@ -419,6 +420,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               <div className="video-progress-label"><span>{job?.stage || (job ? VIDEO_STAGE_LABELS[job.status] : 'Checking status')}</span><b>{progress}%</b></div>
               <progress className="video-progress" value={progress} max={100} aria-label="Render progress" />
               <p className="video-job-id">Job ID <code>{jobId}</code></p>
+              {job?.status === 'completed' && !job.storyboard &&
+                <p className="muted-copy">This job used the older template renderer. Delete it to create a new AI-directed product video.</p>}
               {job?.storyboard && <section className="video-storyboard" aria-label="AI storyboard">
                 <div className="video-storyboard-heading"><b>AI storyboard</b><span>{job.storyboard_model}</span></div>
                 <p>{job.storyboard.concept}</p>
