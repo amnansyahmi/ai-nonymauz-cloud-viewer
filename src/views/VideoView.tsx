@@ -322,7 +322,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 disabled={preparingImage || generatingImage || images.length >= MAX_VIDEO_IMAGES || Boolean(jobId) || status?.image_input_enabled === false}>
                 <ImageIcon /> {preparingImage ? 'Preparing…' : 'Add images'}
               </button>
-              <input ref={imageInput} hidden type="file" multiple accept="image/jpeg,image/png,image/webp"
+              <input ref={imageInput} hidden type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
                 onChange={event => void addFiles(event.target.files)} />
             </div>
             {status?.image_input_enabled === false && <p className="field-help">Image scenes require the updated backend.</p>}

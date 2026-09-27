@@ -5,6 +5,7 @@ export const MAX_VIDEO_IMAGE_BYTES = 768 * 1024;
 export const MAX_VIDEO_TOTAL_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const IOS_PHOTO_TYPES = new Set(['image/heic', 'image/heif']);
 
 export interface VideoImageDraft extends VideoImageInput {
   id: string;
@@ -37,7 +38,8 @@ function decode(file: File): Promise<HTMLImageElement> {
 }
 
 export async function prepareVideoImage(file: File): Promise<VideoImageDraft> {
-  if (!TYPES.has(file.type)) throw new Error(`${file.name}: use JPEG, PNG or WebP.`);
+  const iosPhoto = IOS_PHOTO_TYPES.has(file.type) || /\.hei[cf]$/i.test(file.name);
+  if (!TYPES.has(file.type) && !iosPhoto) throw new Error(`${file.name}: use JPEG, PNG, WebP or an iPhone HEIC photo.`);
   if (!file.size || file.size > MAX_SOURCE_BYTES) throw new Error(`${file.name}: maximum source size is 12 MB.`);
   const image = await decode(file);
   if (image.naturalWidth > 8192 || image.naturalHeight > 8192 ||
@@ -46,7 +48,7 @@ export async function prepareVideoImage(file: File): Promise<VideoImageDraft> {
   }
 
   let output: Blob = file;
-  if (file.size > MAX_VIDEO_IMAGE_BYTES || Math.max(image.naturalWidth, image.naturalHeight) > 1600) {
+  if (iosPhoto || file.size > MAX_VIDEO_IMAGE_BYTES || Math.max(image.naturalWidth, image.naturalHeight) > 1600) {
     const canvas = document.createElement('canvas');
     let longest = Math.min(1600, Math.max(image.naturalWidth, image.naturalHeight));
     for (let attempt = 0; attempt < 5; attempt++) {
