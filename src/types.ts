@@ -262,6 +262,7 @@ export interface VideoJobResponse {
   error?: string | null;
   storyboard?: VideoStoryboard | null;
   storyboard_model?: string | null;
+  storyboard_reference_mode?: 'vision' | 'brief_and_captions' | null;
 }
 
 export interface RagSearchResponse {
