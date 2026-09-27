@@ -424,6 +424,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 <p className="muted-copy">This job used the older template renderer. Delete it to create a new AI-directed product video.</p>}
               {job?.storyboard && <section className="video-storyboard" aria-label="AI storyboard">
                 <div className="video-storyboard-heading"><b>AI storyboard</b><span>{job.storyboard_model}</span></div>
+                {job.storyboard_reference_mode === 'brief_and_captions' &&
+                  <p className="muted-copy">Image analysis was unavailable. The storyboard used your brief and captions; reference images are still included in the video.</p>}
                 <p>{job.storyboard.concept}</p>
                 <ol>{job.storyboard.scenes.map((scene, index) => <li key={index}>
                   <small>{scene.kind}{scene.visual && scene.kind === 'screen' ? ` · ${scene.visual}` : ''}{scene.image_index !== null ? ` · reference ${scene.image_index + 1}` : ''}</small>
