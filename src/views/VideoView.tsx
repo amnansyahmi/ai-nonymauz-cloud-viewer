@@ -423,7 +423,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 <div className="video-storyboard-heading"><b>AI storyboard</b><span>{job.storyboard_model}</span></div>
                 <p>{job.storyboard.concept}</p>
                 <ol>{job.storyboard.scenes.map((scene, index) => <li key={index}>
-                  <small>{scene.kind}{scene.image_index !== null ? ` · reference ${scene.image_index + 1}` : ''}</small>
+                  <small>{scene.kind}{scene.visual && scene.kind === 'screen' ? ` · ${scene.visual}` : ''}{scene.image_index !== null ? ` · reference ${scene.image_index + 1}` : ''}</small>
                   <strong>{scene.headline}</strong><span>{scene.support}</span>
                   {scene.details.length > 0 && <em>{scene.details.join(' · ')}</em>}
                 </li>)}</ol>

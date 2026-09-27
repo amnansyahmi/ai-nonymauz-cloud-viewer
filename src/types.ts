@@ -232,6 +232,7 @@ export interface VideoGenerateRequest {
 
 export interface VideoStoryboardScene {
   kind: 'hero' | 'screen' | 'workflow' | 'stat' | 'outro';
+  visual?: 'dashboard' | 'chat' | 'pipeline';
   kicker: string;
   headline: string;
   support: string;
