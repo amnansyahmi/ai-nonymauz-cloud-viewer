@@ -483,6 +483,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               <div className="video-progress-label"><span>{job?.stage || (job ? VIDEO_STAGE_LABELS[job.status] : 'Checking status')}</span><b>{progress}%</b></div>
               <progress className="video-progress" value={progress} max={100} aria-label="Render progress" />
               <p className="video-job-id">Job ID <code>{jobId}</code></p>
+              {job?.temporary && <p className="muted-copy" role="status">
+                Temporary render: download the video promptly. Vercel will discard its files when this Sandbox session ends.
+              </p>}
               {job?.status === 'completed' && !job.storyboard &&
                 <p className="muted-copy">This job used the older template renderer. Delete it to create a new AI-directed product video.</p>}
               {job?.storyboard && <section className="video-storyboard" aria-label="AI storyboard">
