@@ -225,6 +225,7 @@ export interface VideoGenerateRequest {
   language: 'ms' | 'en';
   style: string;
   sound_effects: boolean;
+  voice_over: boolean;
   creative_mode: 'auto' | 'template';
   title?: string;
   images?: VideoImageInput[];
