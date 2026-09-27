@@ -3,6 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { ApiClient } from '../api/client';
 import { VideoView } from '../views/VideoView';
 import { DEFAULT_VIDEO_REQUEST, videoError } from '../video';
+import { videoImagePayload } from '../videoImages';
 import type { AppTab, ChatSettings } from '../types';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -53,5 +54,21 @@ describe('Video Lab', () => {
     expect(html).toContain('Loading job');
     expect(videoError(new Error('HTTP 401: unauthorized'))).toMatch(/API key/);
     expect(videoError(new Error('HTTP 429: quota'))).toMatch(/quota/);
+  });
+
+  it('sends ordered image scenes without UI-only fields', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ job_id: 'vid_test', status: 'queued' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const images = videoImagePayload([
+      { id: 'first', name: 'a.png', data_url: 'data:image/png;base64,AA==', caption: 'Intro', fit: 'contain', sizeBytes: 1 },
+      { id: 'second', name: 'b.png', data_url: 'data:image/png;base64,AA==', caption: 'End', fit: 'cover', sizeBytes: 1 }
+    ]);
+    await new ApiClient('https://example.test', 'secret').generateVideo({
+      ...DEFAULT_VIDEO_REQUEST, title: 'A product story', images
+    });
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.images).toEqual(images);
+    expect(payload.images[0]).not.toHaveProperty('sizeBytes');
+    expect(payload.images[0]).not.toHaveProperty('id');
   });
 });

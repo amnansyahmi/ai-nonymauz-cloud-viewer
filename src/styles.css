@@ -384,6 +384,26 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .video-lab-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(0, 1.2fr); gap: 12px; }
 .video-form-panel, .video-result-panel { min-width: 0; padding: 18px; }
 .video-form-panel textarea { min-height: 145px; resize: vertical; }
+.video-image-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.video-image-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.video-image-heading > div { display: flex; flex-direction: column; gap: 3px; }
+.video-image-heading b { color: #d3e2f0; font-size: 12px; }
+.video-image-heading span, .video-image-row-head span { color: var(--muted-2); font-size: 10px; }
+.video-image-heading button, .video-image-generate button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; }
+.video-image-heading button svg, .video-image-generate button svg { width: 16px; height: 16px; }
+.video-image-title { margin-top: 14px; }
+.video-image-title small { color: var(--muted-2); font-size: 10px; font-weight: 400; }
+.video-image-list { display: grid; gap: 10px; margin-top: 12px; }
+.video-image-row { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
+.video-image-row > img { display: block; width: 92px; height: 112px; background: #111827; object-fit: contain; }
+.video-image-fields { min-width: 0; display: grid; gap: 8px; }
+.video-image-fields label { gap: 4px; font-size: 10px; }
+.video-image-fields input, .video-image-fields select { min-width: 0; }
+.video-image-row-head, .video-image-actions { display: flex; align-items: center; gap: 6px; }
+.video-image-row-head { justify-content: space-between; color: #cbd8e6; font-size: 11px; }
+.video-image-actions button { min-height: 30px; padding: 4px 9px; font-size: 11px; }
+.video-image-generate { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 8px; margin-top: 14px; }
+.video-image-generate .field-help { grid-column: 1 / -1; margin: 0; }
 .video-duration { margin-top: 18px; }
 .video-duration label { flex-direction: row; justify-content: space-between; }
 .video-duration strong { color: #d3e2f0; }
@@ -538,4 +558,8 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .video-result-head { flex-wrap: wrap; }
   .video-downloads { flex-direction: column; }
   .video-downloads button { width: 100%; }
+  .video-image-generate { grid-template-columns: 1fr; }
+  .video-image-generate .field-help { grid-column: auto; }
+  .video-image-row { grid-template-columns: 70px minmax(0,1fr); gap: 8px; padding: 8px; }
+  .video-image-row > img { width: 70px; height: 88px; }
 }

@@ -203,6 +203,17 @@ export interface VideoStatusResponse {
   sandbox_execution_limit_seconds?: number;
   sandbox_vcpus?: number;
   snapshot_configured?: boolean;
+  image_input_enabled?: boolean;
+  max_images?: number;
+  max_image_bytes?: number;
+  max_total_image_bytes?: number;
+}
+
+export interface VideoImageInput {
+  name: string;
+  data_url: string;
+  caption: string;
+  fit: 'contain' | 'cover';
 }
 
 export interface VideoGenerateRequest {
@@ -213,6 +224,8 @@ export interface VideoGenerateRequest {
   language: 'ms' | 'en';
   style: string;
   sound_effects: boolean;
+  title?: string;
+  images?: VideoImageInput[];
 }
 
 export interface VideoJobResponse {

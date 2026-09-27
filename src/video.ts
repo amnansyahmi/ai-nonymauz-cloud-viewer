@@ -7,7 +7,9 @@ export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
   quality: 'preview',
   language: 'ms',
   style: 'premium-dark',
-  sound_effects: false
+  sound_effects: false,
+  title: '',
+  images: []
 };
 
 export const VIDEO_JOB_STORAGE_KEY = 'ai-nonymauz-video-job';
