@@ -1,7 +1,7 @@
 import type { VideoGenerateRequest, VideoJobStatus } from './types';
 
 export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
-  prompt: 'Create a premium launch video for AI Nonymauz showing a user prompt becoming a polished motion-graphics video.',
+  prompt: 'Launch AI Nonymauz. Show a Malay question about building a .NET API, a concise answer with a code preview, then the AI Nonymauz name as the payoff. Use a clean product interface and a confident, modern pace.',
   duration: 10,
   aspect_ratio: '9:16',
   quality: 'preview',
