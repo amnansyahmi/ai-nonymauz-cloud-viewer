@@ -8,6 +8,7 @@ export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
   language: 'ms',
   style: 'premium-dark',
   sound_effects: true,
+  voice_over: false,
   creative_mode: 'auto',
   title: '',
   images: []
