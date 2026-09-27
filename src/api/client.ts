@@ -177,6 +177,10 @@ export class ApiClient {
     return this.json(`/v1/video/jobs/${encodeURIComponent(jobId)}`, { signal });
   }
 
+  videoJobs(): Promise<{ jobs: Array<{ job_id: string; sandbox_status: string; created_at: number | null }> }> {
+    return this.json('/v1/video/jobs');
+  }
+
   async videoFile(jobId: string, variant: VideoVariant, signal?: AbortSignal): Promise<Blob> {
     const params = new URLSearchParams({ variant });
     const response = await this.checkedFetch(`/v1/video/jobs/${encodeURIComponent(jobId)}/download?${params}`, { signal });
