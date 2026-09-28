@@ -50,7 +50,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [cuttingImage, setCuttingImage] = useState('');
   const [savedJobs, setSavedJobs] = useState<Array<{ job_id: string; sandbox_status: string }>>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
+  const resultPanel = useRef<HTMLDivElement>(null);
 
   const refreshStatus = useCallback(async (signal?: AbortSignal) => {
     setStatusLoading(true);
@@ -334,6 +336,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const ready = status?.enabled === true && status.auth_ready !== false && (!status.auth_required || Boolean(settings.apiKey.trim()));
   const progress = Math.min(100, Math.max(0, job?.progress ?? 0));
   const busy = Boolean(jobId && (!job || activeStatuses.has(job.status)));
+  const runningJobs = savedJobs.filter(item => item.sandbox_status.toLowerCase() === 'running').length;
 
   return (
     <section className="workspace video-lab">
@@ -468,7 +471,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           {jobId && <p className="field-help">Delete the current job before starting another render.</p>}
         </div>
 
-        <div className="panel video-result-panel">
+        <div className="panel video-result-panel" ref={resultPanel}>
           {!jobId && (
             <div className="video-empty"><VideoIcon /><h2>No video yet</h2><p>Create a render job to preview it here.</p></div>
           )}
@@ -531,23 +534,45 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           {notice && <p className="muted-copy" role="status">{notice}</p>}
         </div>
       </div>
-      <div className="panel video-history">
-        <div className="video-image-heading"><div><b>Stored video jobs</b><span>{savedJobs.length} jobs · delete finished jobs after downloading</span></div>
-          <button type="button" className="secondary" onClick={() => void refreshJobs()} disabled={jobsLoading || !settings.apiKey.trim()}>
-            <RefreshIcon /> {jobsLoading ? 'Checking…' : 'Refresh jobs'}
-          </button>
-        </div>
-        {savedJobs.map(item => <div className="video-history-row" key={item.job_id}>
-          <span><code>{item.job_id}</code> · {item.sandbox_status}</span>
-          <div className="video-image-actions">
-            <button type="button" className="secondary" onClick={() => {
-              sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, item.job_id);
-              setJob(undefined); setJobId(item.job_id);
-            }}>Open</button>
-            <button type="button" className="secondary" disabled={deleting} onClick={() => void deleteStoredJob(item.job_id)}>Delete</button>
+      <section className="panel video-history" aria-label="Stored video jobs">
+        <button type="button" className="video-history-toggle" aria-expanded={historyOpen}
+          aria-controls="video-history-content" onClick={() => setHistoryOpen(previous => !previous)}>
+          <span className="video-history-heading">
+            <strong>Stored video jobs</strong>
+            <small>{jobsLoading ? 'Checking jobs…' : `${savedJobs.length} ${savedJobs.length === 1 ? 'job' : 'jobs'}`}
+              {!jobsLoading && runningJobs > 0 ? ` · ${runningJobs} running` : ''}</small>
+          </span>
+          <span className="video-history-chevron" aria-hidden="true" />
+        </button>
+        <div id="video-history-content" className="video-history-content" hidden={!historyOpen}>
+          <div className="video-history-tools">
+            <span>Download finished videos before deleting their jobs.</span>
+            <button type="button" className="secondary compact icon-text" onClick={() => void refreshJobs()}
+              disabled={jobsLoading || !settings.apiKey.trim()}>
+              <RefreshIcon /> {jobsLoading ? 'Checking…' : 'Refresh'}
+            </button>
           </div>
-        </div>)}
-      </div>
+          {savedJobs.length === 0 ? <p className="video-history-empty">No stored jobs yet.</p> :
+            <ul className="video-history-list">{savedJobs.map(item => <li className="video-history-row" key={item.job_id}>
+              <div className="video-history-info">
+                <span className="video-history-name">Video <code title={item.job_id} aria-label={`Job ID ${item.job_id}`}>…{item.job_id.slice(-8)}</code></span>
+                <span className={`video-history-status ${item.sandbox_status.toLowerCase() === 'running' ? 'is-running' : ['failed', 'aborted'].includes(item.sandbox_status.toLowerCase()) ? 'is-failed' : ''}`}>
+                  {item.sandbox_status}
+                </span>
+              </div>
+              <div className="video-history-actions">
+                <button type="button" className="secondary" onClick={() => {
+                  sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, item.job_id);
+                  setJob(undefined); setJobId(item.job_id);
+                  setPollRevision(value => value + 1);
+                  resultPanel.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+                }}>Open</button>
+                <button type="button" className="secondary video-delete" disabled={deleting}
+                  onClick={() => void deleteStoredJob(item.job_id)}>Delete</button>
+              </div>
+            </li>)}</ul>}
+        </div>
+      </section>
     </section>
   );
 }
