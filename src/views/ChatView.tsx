@@ -510,7 +510,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                       }
                     }}
                     onKeyDown={event => {
-                      if (event.key === 'Enter' && !event.shiftKey) {
+                      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
                         event.preventDefault();
                         void submit();
                       }
@@ -550,7 +550,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                   </div>
                 </div>
                 <div className="composer-footer">
-                  <span>{voice.listening ? 'Listening · tap the mic to stop' : 'Enter to send · Shift+Enter for new line'}</span>
+                  <span>{voice.listening ? 'Listening · tap the mic to stop' : 'Enter for new line · Ctrl/⌘+Enter to send'}</span>
                   <span>{imageCount > 0 ? `${imageCount} image${imageCount === 1 ? '' : 's'}` : ''}{imageCount > 0 && fileCount > 0 ? ' · ' : ''}{fileCount > 0 ? `${fileCount} file${fileCount === 1 ? '' : 's'}` : ''}</span>
                 </div>
               </div>
