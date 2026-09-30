@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
 import { streamWithContinuations } from '../chatContinuation';
 import {
@@ -35,13 +35,19 @@ export function useChat(settings: ChatSettings) {
   const [stats, setStats] = useState<ChatStats>(emptyStats);
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
+
+  useEffect(() => () => { generationRef.current += 1; abortRef.current?.abort(); }, []);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
   const clear = useCallback(() => {
+    generationRef.current += 1;
     abortRef.current?.abort();
+    abortRef.current = null;
+    setSending(false);
     setMessages([]);
     setMeta({});
     setStats(emptyStats);
@@ -53,9 +59,11 @@ export function useChat(settings: ChatSettings) {
       content: ChatContent,
       displayText = '',
       displayAttachments: ChatDisplayAttachment[] = [],
-      historyOverride?: ChatMessage[]
+      historyOverride?: ChatMessage[],
+      instruction = ''
     ) => {
-      if (!hasContent(content) || sending) return;
+      if (!hasContent(content) || sending || abortRef.current) return;
+      const generation = ++generationRef.current;
 
       const history = historyOverride ?? messages.filter(message => !message.streaming);
       const userMessage: ChatMessage = {
@@ -84,6 +92,7 @@ export function useChat(settings: ChatSettings) {
       const servedModels: string[] = [];
 
       const showAnswer = (content: string, streaming: boolean, error = false) => {
+        if (generation !== generationRef.current) return;
         setMessages([
           ...requestMessages,
           {
@@ -104,16 +113,18 @@ export function useChat(settings: ChatSettings) {
           async (turnMessages, updateText) => {
             let partTokens: number | undefined;
             const part = await client.streamChat(
-              settings,
+              instruction ? { ...settings, systemPrompt: [settings.systemPrompt, instruction].filter(Boolean).join('\n\n') } : settings,
               turnMessages,
               {
                 onText: updateText,
                 onMeta: nextMeta => {
+                  if (generation !== generationRef.current) return;
                   currentMeta = { ...currentMeta, ...nextMeta };
                   setMeta(currentMeta);
                   if (Array.isArray(nextMeta.sources)) setSources(nextMeta.sources);
                 },
                 onModel: model => {
+                  if (generation !== generationRef.current) return;
                   if (servedModels.includes(model)) return;
                   servedModels.push(model);
                   servedBy = servedModels.join(' → ');
@@ -122,10 +133,12 @@ export function useChat(settings: ChatSettings) {
                   showAnswer(inFlightText, true);
                 },
                 onUsage: tokens => {
+                  if (generation !== generationRef.current) return;
                   partTokens = tokens;
                   setStats(previous => ({ ...previous, totalTokens: (totalTokens ?? 0) + tokens }));
                 },
                 onFirstToken: () => {
+                  if (generation !== generationRef.current) return;
                   if (firstTokenMs !== undefined) return;
                   firstTokenMs = performance.now() - started;
                   setStats(previous => ({ ...previous, firstTokenMs }));
@@ -143,6 +156,11 @@ export function useChat(settings: ChatSettings) {
           cleanAssistantText
         );
 
+        if (generation !== generationRef.current) return { text: '', error: 'Generation stopped.' };
+        if (controller.signal.aborted) {
+          showAnswer(inFlightText ? `${inFlightText}\n\n_Generation stopped._` : 'Generation stopped.', false, true);
+          return { text: '', error: 'Generation stopped.' };
+        }
         completedText = result.text;
         if (result.hitSafetyLimit) completedText += '\n\n_Response hit the provider output limit. Send “continue” to get the rest._';
 
@@ -152,7 +170,9 @@ export function useChat(settings: ChatSettings) {
           totalMs: performance.now() - started,
           totalTokens
         });
+        return { text: cleanAssistantText(completedText) };
       } catch (error) {
+        if (generation !== generationRef.current) return { text: '', error: 'Generation stopped.' };
         if (controller.signal.aborted) {
           showAnswer(inFlightText ? `${inFlightText}\n\n_Generation stopped._` : 'Generation stopped.', false, true);
         } else {
@@ -160,21 +180,25 @@ export function useChat(settings: ChatSettings) {
           showAnswer(inFlightText ? `${inFlightText}\n\n_Response interrupted: ${message}_` : `Error: ${message}`, false, true);
         }
         setStats(previous => ({ ...previous, totalMs: performance.now() - started }));
+        return { text: '', error: controller.signal.aborted ? 'Generation stopped.' : (error instanceof Error ? error.message : String(error)) };
       } finally {
-        if (abortRef.current === controller) abortRef.current = null;
-        setSending(false);
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+          setSending(false);
+        }
       }
     },
     [messages, sending, settings]
   );
 
   const run = useCallback(
-    async (text: string, attachments: ChatAttachment[] = [], historyOverride?: ChatMessage[]) => {
-      await runContent(
+    async (text: string, attachments: ChatAttachment[] = [], historyOverride?: ChatMessage[], instruction = '') => {
+      return runContent(
         buildUserContent(text, attachments),
         text.trim(),
         buildDisplayAttachments(attachments),
-        historyOverride
+        historyOverride,
+        instruction
       );
     },
     [runContent]

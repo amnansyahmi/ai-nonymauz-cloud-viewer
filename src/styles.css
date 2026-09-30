@@ -616,3 +616,37 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .video-history-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .video-history-actions button { min-height: 40px; }
 }
+
+
+/* Voice conversation follows the chat panel's existing visual system. */
+.voice-chat-panel { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.voice-chat-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.voice-chat-header h2 { margin: 0; font-size: 14px; }
+.voice-chat-header p, .voice-chat-disclosure, .voice-chat-note { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.voice-chat-header p { margin: 5px 0 12px; }
+.voice-chat-header button { font-size: 20px; min-width: 36px; }
+.voice-chat-options { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.voice-chat-options label { min-width: 0; }
+.voice-chat-options select { width: 100%; min-width: 0; }
+.voice-chat-disclosure { margin: 12px 0 8px; }
+.voice-chat-note { margin: 6px 0; }
+.voice-chat-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; padding: 8px 0; }
+.voice-chat-status > span:last-child { color: var(--muted); font-size: 11px; }
+.voice-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted-2); }
+.voice-status-dot.listening { background: var(--good); }
+.voice-status-dot.thinking, .voice-status-dot.speaking { background: var(--accent); }
+.voice-status-dot.error { background: var(--danger); }
+.voice-chat-transcript { margin: 4px 0 10px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; max-height: 72px; overflow-y: auto; }
+.voice-chat-error { color: var(--danger); font-size: 12px; line-height: 1.5; }
+.voice-chat-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.voice-chat-actions button { min-height: 40px; }
+.chat-main.voice-open { grid-template-rows: auto auto minmax(140px, 1fr) auto; }
+#voice-chat-controls { max-height: min(330px, 40dvh); overflow-y: auto; }
+@media (max-width: 620px) {
+  .chat-app-shell .chat-main.voice-open { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  .voice-chat-panel { padding: 12px; }
+  .voice-chat-options { gap: 8px; }
+  .voice-chat-header p { font-size: 10px; }
+  .voice-chat-disclosure { font-size: 10px; }
+  .voice-chat-actions button { min-height: 44px; }
+}
