@@ -85,3 +85,28 @@ Video Lab's optional "Make depth cutout" uses [IMG.LY background-removal-js](htt
 ## Repository hygiene
 
 Generated `dist/` output and old packaged ZIP artifacts should not be committed. The old parallel vanilla-JS tester has also been removed; `src/main.tsx` is now the single application entry point.
+
+
+## Browser voice chat
+
+Open **Chat → Voice chat**, select Bahasa Melayu or English, and click **Start voice chat**.
+Allow the browser microphone prompt. A pause after speech submits a turn through the
+existing `/chat` API; the browser reads the completed answer, then listens for the next
+turn. **Send now** ends listening early. **Interrupt** stops the current answer and
+opens the microphone again. **Pause**, **End**, closing the panel, hiding the page,
+and leaving Chat release the microphone and cancel voice playback/generation.
+
+This adds no speech API keys, paid speech provider, GPU worker, VoiceStudio model,
+or backend deployment changes. Chat continues to use the selected backend/model,
+RAG, tools, authentication, history, and existing AI usage limits. It is turn-based
+browser speech, not simultaneous speech-to-speech: spoken interruption requires
+the Interrupt button, and audio starts after the text response completes.
+
+Speech recognition requires HTTPS (or localhost) and browser support for
+`SpeechRecognition`/`webkitSpeechRecognition`. Speech playback uses `speechSynthesis`.
+Support varies by browser, OS, and standalone PWA mode; unsupported browsers retain
+text chat. Recognition may send audio to the browser provider and may need internet.
+Voices come from the device/browser; install a Malay voice if none is available.
+No raw audio is uploaded to AI Nonymauz by this implementation. Verify real microphone,
+Malay recognition, and audio playback on your own desktop/Android/iOS devices before
+relying on it. Browser-service availability is outside the application's control.

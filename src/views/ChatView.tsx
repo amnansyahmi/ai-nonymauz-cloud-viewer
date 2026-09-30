@@ -22,6 +22,8 @@ import type {
   ProfilesResponse
 } from '../types';
 import { MarkdownMessage } from '../components/MarkdownMessage';
+import { VoiceChatPanel } from '../components/VoiceChatPanel';
+import { VOICE_INSTRUCTION } from '../voiceConversation';
 import {
   FileIcon,
   ImageIcon,
@@ -65,6 +67,7 @@ function fallbackDisplayAttachments(messageImages: ReturnType<typeof chatContent
 
 export function ChatView({ settings, modelOptions, profiles, onSettingsChange }: ChatViewProps) {
   const [input, setInput] = useState('');
+  const [voiceChatOpen, setVoiceChatOpen] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState('');
   const [processingFiles, setProcessingFiles] = useState(0);
@@ -168,7 +171,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
 
   async function submit() {
     const value = input.trim();
-    if ((!value && attachments.length === 0) || chat.sending || processingFiles > 0) return;
+    if ((!value && attachments.length === 0) || chat.sending || processingFiles > 0 || voiceChatOpen) return;
 
     voice.stop();
     const pendingAttachments = attachments;
@@ -213,7 +216,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
         </div>
 
         <div className="chat-grid">
-          <div className="chat-main panel">
+          <div className={`chat-main panel ${voiceChatOpen ? 'voice-open' : ''}`}>
             <div className="chat-toolbar">
               <div className="toggle-group">
                 <label className={`toggle-pill ${settings.useRag ? 'active' : ''}`}>
@@ -235,15 +238,27 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
               </div>
 
               <div className="toolbar-actions">
+                <button type="button" className="ghost icon-text" disabled={chat.sending || processingFiles > 0} aria-label="Voice chat" title="Voice chat" aria-expanded={voiceChatOpen} aria-controls="voice-chat-controls" onClick={() => { voice.stop(); setVoiceChatOpen(open => !open); }}>
+                  <MicIcon /> Voice chat
+                </button>
                 <button type="button" className="ghost mobile-inspector-button" onClick={() => setInspectorOpen(true)} aria-label="Open chat details">Details</button>
-                <button type="button" className="ghost icon-text" disabled={!hasConversation || chat.sending} onClick={chat.regenerate}>
+                <button type="button" className="ghost icon-text" disabled={!hasConversation || chat.sending || voiceChatOpen} onClick={chat.regenerate}>
                   <RepeatIcon /> Regenerate
                 </button>
-                <button type="button" className="ghost icon-text" disabled={!hasConversation} onClick={chat.clear}>
+                <button type="button" className="ghost icon-text" disabled={!hasConversation} onClick={() => { setVoiceChatOpen(false); chat.clear(); }}>
                   <TrashIcon /> Clear
                 </button>
               </div>
             </div>
+
+            {voiceChatOpen && <div id="voice-chat-controls">
+              <VoiceChatPanel
+                send={text => chat.send(text, [], undefined, VOICE_INSTRUCTION)}
+                stopReply={chat.stop}
+                busy={chat.sending}
+                onClose={() => setVoiceChatOpen(false)}
+              />
+            </div>}
 
             <div className="message-thread" ref={threadRef}>
               {!hasConversation && (
@@ -453,7 +468,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                     <button
                       className={`composer-icon-button plus-button ${attachmentMenuOpen ? 'active' : ''}`}
                       type="button"
-                      disabled={chat.sending}
+                      disabled={chat.sending || voiceChatOpen}
                       onClick={() => setAttachmentMenuOpen(open => !open)}
                       aria-label="Add attachment"
                       aria-expanded={attachmentMenuOpen}
@@ -497,6 +512,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                   </div>
 
                   <textarea
+                    disabled={voiceChatOpen}
                     value={input}
                     onChange={event => setInput(event.target.value)}
                     onPaste={event => {
@@ -531,7 +547,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                     <button
                       className={`composer-icon-button mic-button ${voice.listening ? 'listening' : ''}`}
                       type="button"
-                      disabled={!voice.supported || chat.sending}
+                      disabled={!voice.supported || chat.sending || voiceChatOpen}
                       onClick={voice.toggle}
                       aria-label={voice.listening ? 'Stop voice input' : 'Use voice input'}
                       title={voice.supported ? (voice.listening ? 'Stop listening' : 'Use voice input') : 'Voice input is not supported by this browser'}
@@ -539,18 +555,18 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                       {voice.listening ? <StopIcon /> : <MicIcon />}
                     </button>
                     {chat.sending ? (
-                      <button className="stop-button" type="button" onClick={chat.stop} aria-label="Stop generation">
+                      <button className="stop-button" type="button" onClick={() => { setVoiceChatOpen(false); chat.stop(); }} aria-label="Stop generation">
                         <StopIcon />
                       </button>
                     ) : (
-                      <button className="send-button" type="button" disabled={!canSend} onClick={() => void submit()} aria-label="Send message">
+                      <button className="send-button" type="button" disabled={!canSend || voiceChatOpen} onClick={() => void submit()} aria-label="Send message">
                         <SendIcon />
                       </button>
                     )}
                   </div>
                 </div>
                 <div className="composer-footer">
-                  <span>{voice.listening ? 'Listening · tap the mic to stop' : 'Enter for new line · Ctrl/⌘+Enter to send'}</span>
+                  <span>{voiceChatOpen ? 'Close voice chat to type a message' : voice.listening ? 'Listening · tap the mic to stop' : 'Enter for new line · Ctrl/⌘+Enter to send'}</span>
                   <span>{imageCount > 0 ? `${imageCount} image${imageCount === 1 ? '' : 's'}` : ''}{imageCount > 0 && fileCount > 0 ? ' · ' : ''}{fileCount > 0 ? `${fileCount} file${fileCount === 1 ? '' : 's'}` : ''}</span>
                 </div>
               </div>
