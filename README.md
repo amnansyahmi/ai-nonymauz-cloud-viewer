@@ -110,3 +110,18 @@ Voices come from the device/browser; install a Malay voice if none is available.
 No raw audio is uploaded to AI Nonymauz by this implementation. Verify real microphone,
 Malay recognition, and audio playback on your own desktop/Android/iOS devices before
 relying on it. Browser-service availability is outside the application's control.
+
+# Video creative controls
+
+Video Lab supports art direction (Surprise me, Editorial, Kinetic, Playful,
+Cinematic, Interface), motion intensity, and an optional locked composition
+seed. Unlocked generations send a fresh seed; locking it keeps composition
+choices stable while AI copy and drawings may still vary. The storyboard
+shows each scene's subject and layout, plus the resolved direction and seed.
+App actions are animated demonstrations inside the exported MP4.
+
+Deploy the matching backend update first. The viewer enables these controls
+only when `/v1/video/status` returns `creative_direction_enabled: true`;
+older backends continue to receive the existing request shape. No new viewer
+environment variables are needed.
+

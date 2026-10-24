@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
 import { ImageIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
-import { DEFAULT_VIDEO_REQUEST, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS, videoError } from '../video';
+import { ART_DIRECTIONS, DEFAULT_VIDEO_REQUEST, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS,
+  directedVideoRequest, videoError } from '../video';
 import {
   MAX_VIDEO_IMAGES, MAX_VIDEO_TOTAL_IMAGE_BYTES, prepareVideoImage, videoImagePayload
 } from '../videoImages';
@@ -28,6 +29,7 @@ function formatBytes(value?: number): string {
 export function VideoView({ settings }: { settings: ChatSettings }) {
   const client = useMemo(() => new ApiClient(settings.backendUrl, settings.apiKey), [settings.backendUrl, settings.apiKey]);
   const [form, setForm] = useState<VideoGenerateRequest>(DEFAULT_VIDEO_REQUEST);
+  const [lockSeed, setLockSeed] = useState(false);
   const [status, setStatus] = useState<VideoStatusResponse>();
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState('');
@@ -257,8 +259,10 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setError('');
     setNotice('');
     try {
-      const next = await client.generateVideo({ ...form, creative_mode: images.length ? 'auto' : form.creative_mode,
-        prompt: form.prompt.trim(), images: videoImagePayload(images) });
+      const payload = directedVideoRequest({ ...form, creative_mode: images.length ? 'auto' : form.creative_mode,
+        prompt: form.prompt.trim(), images: videoImagePayload(images) }, status.creative_direction_enabled === true, lockSeed);
+      const next = await client.generateVideo(payload);
+      if (payload.variation_seed !== undefined) update('variation_seed', payload.variation_seed);
       sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, next.job_id);
       setJob(next);
       setJobId(next.job_id);
@@ -378,7 +382,29 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               <option value="template" disabled={images.length > 0}>Simple template · text only</option>
             </select>
           </label>
-          <p className="field-help">AI plans the storyboard and directs each scene. Product photos become moving, image-led scenes.</p>
+          <p className="field-help">AI chooses scenes for your subject: comparisons, timelines, diagrams, typography or app demos. Product photos receive camera direction.</p>
+          {form.creative_mode === 'auto' && <fieldset className="video-direction-controls" disabled={Boolean(jobId) || submitting || !status?.creative_direction_enabled}>
+            <legend>Creative direction</legend>
+            <label>Art direction
+              <select value={form.art_direction ?? 'auto'} onChange={event => update('art_direction', event.target.value as VideoGenerateRequest['art_direction'])}>
+                {ART_DIRECTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label>Motion intensity
+              <select value={form.motion_energy ?? 'balanced'} onChange={event => update('motion_energy', event.target.value as VideoGenerateRequest['motion_energy'])}>
+                <option value="calm">Calm</option><option value="balanced">Balanced</option><option value="energetic">Energetic</option>
+              </select>
+            </label>
+            <label className="check-row"><input type="checkbox" checked={lockSeed} onChange={event => setLockSeed(event.target.checked)} />Keep composition seed</label>
+            {lockSeed && <label>Composition seed
+              <input type="number" min={0} max={2147483647} step={1} value={form.variation_seed ?? 0}
+                onChange={event => update('variation_seed', Math.max(0, Math.min(2147483647, Math.trunc(Number(event.target.value) || 0))))} />
+            </label>}
+            <p className="field-help">{lockSeed ? 'Keeps layout choices stable. AI wording and drawings can still vary.' : 'Each generation gets a fresh composition seed.'}</p>
+          </fieldset>}
+          {form.creative_mode === 'auto' && status && !status.creative_direction_enabled &&
+            <p className="field-help">Creative controls need the updated video backend.</p>}
+          <p className="field-help">App demos can show animated taps, selections and results. The exported MP4 plays these actions as a sequence.</p>
           <label>
             Video brief
             <textarea rows={6} value={form.prompt} onChange={event => update('prompt', event.target.value)} />
@@ -496,8 +522,10 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 {job.storyboard_reference_mode === 'brief_and_captions' &&
                   <p className="muted-copy">Image analysis was unavailable. The storyboard used your brief and captions; reference images are still included in the video.</p>}
                 <p>{job.storyboard.concept}</p>
+                {job.storyboard.art_direction && <p className="muted-copy">{job.storyboard.art_direction} · {job.storyboard.motion_energy} motion · seed {job.storyboard.variation_seed}</p>}
+                {job.generated_visual_fallback && <p className="muted-copy">A custom drawing could not be rendered. This video uses its directed scene composition.</p>}
                 <ol>{job.storyboard.scenes.map((scene, index) => <li key={index}>
-                  <small>{scene.kind}{scene.visual && scene.kind === 'screen' ? ` · ${scene.visual}` : ''}{scene.image_index !== null ? ` · reference ${scene.image_index + 1}` : ''}</small>
+                  <small>{scene.kind}{scene.visual ? ` · ${scene.visual}` : ''}{scene.stage_layout ? ` · ${scene.stage_layout}` : ''}{scene.image_index != null ? ` · reference ${scene.image_index + 1}` : ''}</small>
                   <strong>{scene.headline}</strong><span>{scene.support}</span>
                   {scene.details.length > 0 && <em>{scene.details.join(' · ')}</em>}
                 </li>)}</ol>
@@ -576,3 +604,4 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     </section>
   );
 }
+

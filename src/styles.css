@@ -650,3 +650,10 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .voice-chat-disclosure { font-size: 10px; }
   .voice-chat-actions button { min-height: 44px; }
 }
+
+/* Video art direction stays inside the normal form flow on small screens. */
+.video-direction-controls { min-width:0; margin:0; padding:16px; border:1px solid var(--border, #d9dde4); border-radius:14px; display:grid; gap:12px; }
+.video-direction-controls legend { padding:0 6px; font-size:13px; font-weight:650; }
+.video-direction-controls:disabled { opacity:.55; }
+.video-direction-controls .check-row { display:flex; flex-direction:row; align-items:center; gap:9px; }
+.video-direction-controls .check-row input { width:auto; margin:0; }

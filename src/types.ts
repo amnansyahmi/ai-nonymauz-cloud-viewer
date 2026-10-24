@@ -205,6 +205,7 @@ export interface VideoStatusResponse {
   snapshot_configured?: boolean;
   image_input_enabled?: boolean;
   auto_storyboard_enabled?: boolean;
+  creative_direction_enabled?: boolean;
   max_images?: number;
   max_image_bytes?: number;
   max_total_image_bytes?: number;
@@ -227,13 +228,18 @@ export interface VideoGenerateRequest {
   sound_effects: boolean;
   voice_over: boolean;
   creative_mode: 'auto' | 'template';
+  art_direction?: 'auto' | 'editorial' | 'kinetic' | 'playful' | 'cinematic' | 'interface';
+  motion_energy?: 'calm' | 'balanced' | 'energetic';
+  variation_seed?: number;
   title?: string;
   images?: VideoImageInput[];
 }
 
 export interface VideoStoryboardScene {
   kind: 'hero' | 'screen' | 'workflow' | 'stat' | 'outro';
-  visual?: 'dashboard' | 'chat' | 'pipeline';
+  visual?: 'dashboard' | 'chat' | 'pipeline' | 'code' | 'product' | 'comparison' | 'timeline' | 'diagram' | 'typography';
+  stage_layout?: 'split' | 'stacked' | 'full' | 'type-led' | 'diagonal' | null;
+  transition?: 'wipe' | 'reveal' | 'rise' | null;
   kicker: string;
   headline: string;
   support: string;
@@ -247,6 +253,9 @@ export interface VideoStoryboard {
   theme: 'dark' | 'light';
   accent: string;
   scenes: VideoStoryboardScene[];
+  art_direction?: string;
+  variation_seed?: number;
+  motion_energy?: 'calm' | 'balanced' | 'energetic';
 }
 
 export interface VideoJobResponse {
@@ -265,6 +274,8 @@ export interface VideoJobResponse {
   storyboard?: VideoStoryboard | null;
   storyboard_model?: string | null;
   storyboard_reference_mode?: 'vision' | 'brief_and_captions' | null;
+  generated_visual_scenes?: number[];
+  generated_visual_fallback?: boolean;
 }
 
 export interface RagSearchResponse {
@@ -317,3 +328,4 @@ export interface BenchmarkResult {
   answer?: string;
   error?: string;
 }
+

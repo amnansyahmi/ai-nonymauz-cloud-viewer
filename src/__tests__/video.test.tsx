@@ -2,13 +2,26 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { ApiClient } from '../api/client';
 import { VideoView } from '../views/VideoView';
-import { DEFAULT_VIDEO_REQUEST, videoError } from '../video';
+import { DEFAULT_VIDEO_REQUEST, directedVideoRequest, videoError } from '../video';
 import { videoImagePayload } from '../videoImages';
 import type { AppTab, ChatSettings } from '../types';
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Video Lab', () => {
+  it('sends new direction only to compatible backends and varies unlocked generations', () => {
+    let nextSeed = 40;
+    vi.stubGlobal('crypto', { getRandomValues: (values: Uint32Array) => { values[0] = ++nextSeed; return values; } });
+    const form = { ...DEFAULT_VIDEO_REQUEST, variation_seed: 123 };
+    expect(directedVideoRequest(form, false, true)).not.toHaveProperty('art_direction');
+    expect(directedVideoRequest(form, false, true)).not.toHaveProperty('variation_seed');
+    expect(directedVideoRequest({ ...form, creative_mode: 'template' }, true, false)).not.toHaveProperty('motion_energy');
+    expect(directedVideoRequest(form, true, true).variation_seed).toBe(123);
+    const first = directedVideoRequest(form, true, false);
+    const second = directedVideoRequest(form, true, false);
+    expect(first.variation_seed).not.toBe(second.variation_seed);
+    expect(first).toMatchObject({ art_direction: 'auto', motion_energy: 'balanced' });
+  });
   it('supports the video tab and safe 10-second preview defaults', () => {
     const tab: AppTab = 'video';
     expect(tab).toBe('video');
@@ -76,3 +89,4 @@ describe('Video Lab', () => {
     expect(payload.images[0]).not.toHaveProperty('id');
   });
 });
+
