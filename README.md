@@ -125,3 +125,6 @@ only when `/v1/video/status` returns `creative_direction_enabled: true`;
 older backends continue to receive the existing request shape. No new viewer
 environment variables are needed.
 
+The storyboard also shows each scene's planned transition: wipe, slide, iris,
+reveal, rise or cut. Exported transition animation is handled by the backend.
+

@@ -239,7 +239,7 @@ export interface VideoStoryboardScene {
   kind: 'hero' | 'screen' | 'workflow' | 'stat' | 'outro';
   visual?: 'dashboard' | 'chat' | 'pipeline' | 'code' | 'product' | 'comparison' | 'timeline' | 'diagram' | 'typography';
   stage_layout?: 'split' | 'stacked' | 'full' | 'type-led' | 'diagonal' | null;
-  transition?: 'wipe' | 'reveal' | 'rise' | null;
+  transition?: 'wipe' | 'reveal' | 'rise' | 'slide' | 'iris' | 'cut' | null;
   kicker: string;
   headline: string;
   support: string;

@@ -525,7 +525,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 {job.storyboard.art_direction && <p className="muted-copy">{job.storyboard.art_direction} · {job.storyboard.motion_energy} motion · seed {job.storyboard.variation_seed}</p>}
                 {job.generated_visual_fallback && <p className="muted-copy">A custom drawing could not be rendered. This video uses its directed scene composition.</p>}
                 <ol>{job.storyboard.scenes.map((scene, index) => <li key={index}>
-                  <small>{scene.kind}{scene.visual ? ` · ${scene.visual}` : ''}{scene.stage_layout ? ` · ${scene.stage_layout}` : ''}{scene.image_index != null ? ` · reference ${scene.image_index + 1}` : ''}</small>
+                  <small>{scene.kind}{scene.visual ? ` · ${scene.visual}` : ''}{scene.stage_layout ? ` · ${scene.stage_layout}` : ''}{scene.transition ? ` · ${scene.transition} transition` : ''}{scene.image_index != null ? ` · reference ${scene.image_index + 1}` : ''}</small>
                   <strong>{scene.headline}</strong><span>{scene.support}</span>
                   {scene.details.length > 0 && <em>{scene.details.join(' · ')}</em>}
                 </li>)}</ol>
