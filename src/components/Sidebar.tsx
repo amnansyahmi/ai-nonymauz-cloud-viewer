@@ -58,6 +58,7 @@ export function Sidebar({
           return (
             <button
               key={item.id}
+              aria-label={item.label}
               type="button"
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => onTabChange(item.id)}
@@ -134,3 +135,4 @@ export function Sidebar({
     </aside>
   );
 }
+

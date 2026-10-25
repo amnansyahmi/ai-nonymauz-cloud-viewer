@@ -1,3 +1,4 @@
+import { VideoPlanEditor } from '../components/VideoPlanEditor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
 import { ImageIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
@@ -351,6 +352,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
         </button>
       </div>
 
+      <VideoPlanEditor client={client} form={form} available={status?.planning_v2_enabled === true} />
+
       <div className="panel video-service">
         <div className="video-service-heading">
           <span className={`service-icon ${ready ? 'online' : ''}`}><VideoIcon /></span>
@@ -576,3 +579,4 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     </section>
   );
 }
+

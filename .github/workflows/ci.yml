@@ -2,7 +2,7 @@ name: Console CI
 
 on:
   push:
-    branches: [main, feature/console-v3]
+    branches: [main, feature/console-v3, feat/video-engine-v2]
   pull_request:
     branches: [main]
 
@@ -24,10 +24,11 @@ jobs:
           node-version: '24'
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Run tests
         run: npm test
 
       - name: Build
         run: npm run build
+

@@ -192,6 +192,8 @@ export type VideoJobStatus = 'queued' | 'preparing' | 'planning' | 'building' | 
 export type VideoVariant = 'compressed' | 'master';
 
 export interface VideoStatusResponse {
+  planning_v2_enabled?: boolean;
+  planning_v2_render_enabled?: boolean;
   enabled: boolean;
   provider?: string;
   renderer?: string;
@@ -317,3 +319,4 @@ export interface BenchmarkResult {
   answer?: string;
   error?: string;
 }
+

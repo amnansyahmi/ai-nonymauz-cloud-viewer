@@ -1,0 +1,225 @@
+{
+  "schema_version": "2.0",
+  "request": {
+    "prompt": "Explain heat transfer",
+    "duration": 12,
+    "fps": 30,
+    "aspect_ratio": "9:16",
+    "language": "en",
+    "direction": null,
+    "diversity": "balanced",
+    "seed": 0,
+    "asset_ids": []
+  },
+  "brief": {
+    "schema_version": "2.0",
+    "objective": "Explain heat transfer",
+    "audience": "Curious students",
+    "direction": "illustrated_explainer",
+    "emotional_tone": "Curious",
+    "narrative_strategy": "Question, mechanism, consequence",
+    "visual_concept": "Energy moving between objects",
+    "pacing": "measured",
+    "camera_language": "Follow energy movement",
+    "audio_direction": "Calm narration",
+    "supplied_facts": []
+  },
+  "style": {
+    "background": "#102030",
+    "foreground": "#ffffff",
+    "accent": "#ff8800",
+    "secondary": "#44aaff",
+    "typography": "sans",
+    "lighting": "soft",
+    "texture": "clean",
+    "motion_personality": "precise",
+    "identity_notes": "Warm energy and cool surfaces"
+  },
+  "assets": [],
+  "scenes": [
+    {
+      "id": "beat-0",
+      "objective": "Explain step 0",
+      "narrative_beat": "Step 0",
+      "visual_description": "Energy crosses the surface",
+      "composition": "parallax",
+      "composition_options": [
+        "diagram",
+        "split_screen",
+        "isometric",
+        "parallax"
+      ],
+      "duration_frames": 84,
+      "camera": "push",
+      "headline": "Follow the energy",
+      "narration": "Energy moves between surfaces.",
+      "audio_cue": "",
+      "layers": [
+        {
+          "id": "energy",
+          "depth": "middle",
+          "kind": "circle",
+          "description": "Moving energy",
+          "text": "",
+          "asset_id": null,
+          "x": 0.1,
+          "y": 0.2,
+          "width": 0.3,
+          "height": 0.3,
+          "color_role": "accent",
+          "motion": {
+            "entrance": "rise",
+            "behavior": "drift",
+            "exit": "fade",
+            "easing": "smooth",
+            "delay_frames": 0,
+            "amplitude": 0.03
+          }
+        }
+      ],
+      "transition": {
+        "kind": "cut",
+        "frames": 0,
+        "rationale": "Show the next mechanism"
+      }
+    },
+    {
+      "id": "beat-1",
+      "objective": "Explain step 1",
+      "narrative_beat": "Step 1",
+      "visual_description": "Energy crosses the surface",
+      "composition": "diagram",
+      "composition_options": [
+        "diagram",
+        "split_screen",
+        "isometric",
+        "parallax"
+      ],
+      "duration_frames": 108,
+      "camera": "push",
+      "headline": "Follow the energy",
+      "narration": "Energy moves between surfaces.",
+      "audio_cue": "",
+      "layers": [
+        {
+          "id": "energy",
+          "depth": "middle",
+          "kind": "circle",
+          "description": "Moving energy",
+          "text": "",
+          "asset_id": null,
+          "x": 0.1,
+          "y": 0.2,
+          "width": 0.3,
+          "height": 0.3,
+          "color_role": "accent",
+          "motion": {
+            "entrance": "rise",
+            "behavior": "drift",
+            "exit": "fade",
+            "easing": "smooth",
+            "delay_frames": 0,
+            "amplitude": 0.03
+          }
+        }
+      ],
+      "transition": {
+        "kind": "cut",
+        "frames": 0,
+        "rationale": "Show the next mechanism"
+      }
+    },
+    {
+      "id": "beat-2",
+      "objective": "Explain step 2",
+      "narrative_beat": "Step 2",
+      "visual_description": "Energy crosses the surface",
+      "composition": "isometric",
+      "composition_options": [
+        "diagram",
+        "split_screen",
+        "isometric",
+        "parallax"
+      ],
+      "duration_frames": 72,
+      "camera": "push",
+      "headline": "Follow the energy",
+      "narration": "Energy moves between surfaces.",
+      "audio_cue": "",
+      "layers": [
+        {
+          "id": "energy",
+          "depth": "middle",
+          "kind": "circle",
+          "description": "Moving energy",
+          "text": "",
+          "asset_id": null,
+          "x": 0.1,
+          "y": 0.2,
+          "width": 0.3,
+          "height": 0.3,
+          "color_role": "accent",
+          "motion": {
+            "entrance": "rise",
+            "behavior": "drift",
+            "exit": "fade",
+            "easing": "smooth",
+            "delay_frames": 0,
+            "amplitude": 0.03
+          }
+        }
+      ],
+      "transition": {
+        "kind": "cut",
+        "frames": 0,
+        "rationale": "Show the next mechanism"
+      }
+    },
+    {
+      "id": "beat-3",
+      "objective": "Explain step 3",
+      "narrative_beat": "Step 3",
+      "visual_description": "Energy crosses the surface",
+      "composition": "split_screen",
+      "composition_options": [
+        "diagram",
+        "split_screen",
+        "isometric",
+        "parallax"
+      ],
+      "duration_frames": 96,
+      "camera": "push",
+      "headline": "Follow the energy",
+      "narration": "Energy moves between surfaces.",
+      "audio_cue": "",
+      "layers": [
+        {
+          "id": "energy",
+          "depth": "middle",
+          "kind": "circle",
+          "description": "Moving energy",
+          "text": "",
+          "asset_id": null,
+          "x": 0.1,
+          "y": 0.2,
+          "width": 0.3,
+          "height": 0.3,
+          "color_role": "accent",
+          "motion": {
+            "entrance": "rise",
+            "behavior": "drift",
+            "exit": "fade",
+            "easing": "smooth",
+            "delay_frames": 0,
+            "amplitude": 0.03
+          }
+        }
+      ],
+      "transition": {
+        "kind": "cut",
+        "frames": 0,
+        "rationale": "Show the next mechanism"
+      }
+    }
+  ]
+}

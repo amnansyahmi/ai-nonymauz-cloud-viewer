@@ -1,3 +1,4 @@
+import type { PlanRequest, PlanResponse, PlanValidation, ProjectPlan, RevisionStage } from '../videoV2';
 import { consumeSse } from './sse';
 import { messagesHaveImages } from '../chatImages';
 import type {
@@ -163,6 +164,19 @@ export class ApiClient {
     });
   }
 
+  videoPlan(request: PlanRequest, signal?: AbortSignal): Promise<PlanResponse> {
+    return this.json('/v1/video/v2/plan', { method: 'POST', body: JSON.stringify(request), signal });
+  }
+
+  reviseVideoPlan(project: ProjectPlan, stage: RevisionStage, instruction: string, sceneId?: string, signal?: AbortSignal): Promise<PlanResponse> {
+    return this.json('/v1/video/v2/revise', { method: 'POST',
+      body: JSON.stringify({ project, stage, instruction, scene_id: sceneId ?? null }), signal });
+  }
+
+  validateVideoPlan(project: ProjectPlan, signal?: AbortSignal): Promise<PlanValidation> {
+    return this.json('/v1/video/v2/validate', { method: 'POST', body: JSON.stringify(project), signal });
+  }
+
   videoStatus(signal?: AbortSignal): Promise<VideoStatusResponse> {
     return this.json('/v1/video/status', { signal });
   }
@@ -312,3 +326,4 @@ export class ApiClient {
     }
   }
 }
+

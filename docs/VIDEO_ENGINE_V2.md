@@ -70,3 +70,92 @@ planning implementation. Provider calls and Sandbox renders retain their existin
 ## Audit limits
 This is a source audit, not a production load test. No live paid generation was started.
 Visual, browser playback, quota and provider claims require subsequent evidence.
+
+
+## Implemented increment — planning foundation (2026-10-26)
+
+This branch is an incomplete V2 implementation. It does not yet improve exported MP4s.
+The existing V1 renderer remains the only export path. V2 plans explicitly return
+render_ready=false and are never silently compiled into V1 templates.
+
+### Backend
+motion_video/v2/models.py: strict version 2.0 creative brief, style, narrative outline,
+scene/layer/asset/motion/transition contracts. Integer frame accounting includes overlaps.
+Unknown fields, duplicate IDs, invalid references, off-frame rectangles, non-finite values
+and changed locked stages are rejected.
+diversity.py: seeded bounded composition search before scene authoring; conservative,
+balanced and experimental repetition penalties; largest-remainder frame allocation;
+metadata metrics and scene-specific planning diagnostics.
+planner.py: separate concept and actual layer-authoring calls via the existing LiteLLM
+router. Bounded provider failover, one schema correction, 105s overall planning and 70s
+revision budgets. Targeted brief/storyboard/scene/motion revision. Brief changes mark
+dependent stages stale. The seed reproduces selection for the same outline; live model
+text is not guaranteed deterministic. Concept checkpoint data is returned to the caller,
+not persisted in a durable job store.
+api.py: authenticated POST /v1/video/v2/plan, /revise and /validate, guarded by the existing
+video feature/auth readiness. Planning never creates a Sandbox. Status advertises
+planning_v2_enabled and planning_v2_render_enabled=false.
+
+### Viewer
+src/videoV2.ts, src/components/VideoPlanEditor.tsx, src/video-v2.css: progressively disclosed
+planning editor, composition sketches, exact frame timeline, reorder/duplicate/delete,
+headline/narration/on-screen copy edits, camera choice, frame duration editing, targeted
+scene/motion/storyboard revision, validation and JSON export. Sketches are static bounding
+box previews, not rendered thumbnails. A backend capability flag gates planning on older
+servers. Current V1 video jobs/history and image flow remain available.
+Mobile icon navigation now has persistent accessible labels. jsdom is a development-only
+dependency; a lockfile and branch CI coverage were added.
+
+### Evidence and limitations
+- 24 initial planning unit tests passed; the final overcrowded-outline regression brought
+  the unit suite to 25, all passing.
+- 7 HTTP boundary tests passed with the actual app/auth and mocked planning calls.
+- 64 targeted backend video tests passed before the final additional unit regression.
+- Viewer: 44 tests passed, including DOM edits, errors, API authentication and retiming;
+  TypeScript/Vite production build passed.
+- Browser with mocked backend: 390x844 touch viewport; plan, duplicate, delete, reorder and
+  validate succeeded; exact 360-frame timeline; no page/editor horizontal overflow or
+  page errors. Desktop screenshot was also captured. This does not verify a physical phone
+  or live provider behavior.
+- Full backend run: 498 passed, 3 failed, 8 subtests passed before HTTP tests were added.
+  An unchanged baseline reproduced the same 3 failures (474 passed): existing RAG model
+  alias retrieval expectations in tests/test_rag_ranking.py. They were not suppressed.
+- Offline selector benchmark: 10 hand-authored prompt-category fixtures × 5 seeds;
+  4 unique sequences per category, zero within-video composition repetition. Comparison
+  is to unpenalized first-choice selection on identical fixture candidates, NOT to
+  generated V1 videos. No live prompt-adherence, visual similarity or video quality score.
+- Measured selector runtime: see video-v2-benchmark.json (~0.044s in this workspace).
+  This is not render latency. Production cost/CPU/memory/render success rate are unknown.
+- No new backend dependency or paid service. Planning adds a second model stage and can
+  use bounded corrections/failover; actual provider cost is unknown without pricing.
+- No live model or Sandbox verification: backend/provider/Vercel credentials were absent
+  in this workspace. No V2 sample MP4 is supplied.
+
+### Remaining milestones
+2: deterministic motion renderer and transition compatibility, real MP4 examples.
+3: scene cache/checkpoints, durable state, cancellation, recovery, decode/output QA.
+4: actual animated preview, rendered thumbnails, asset replacement and final export.
+5: measured narration sync, captions, audio mix/ducking and asset consistency enforcement.
+6: pixel/audio QA, real multi-seed video benchmark, rendering performance/cost telemetry.
+Before calling milestone 1 end-to-end verified, run live concept/layer authoring against
+a credentialed development backend and inspect the resulting project quality. Do not
+merge or claim production readiness based on mock-provider tests.
+
+## Planning flow
+
+```mermaid
+flowchart TD
+  A["Prompt and constraints"] --> B["Typed concept and narrative"]
+  B --> C["Seeded composition selection"]
+  C --> D["Layer authoring and frame allocation"]
+  D --> E["Project validation and diagnostics"]
+  E --> F["Editable plan and JSON export"]
+```
+
+## Local verification
+Backend: install requirements-dev.txt, then run python -m pytest tests/video_v2 -q.
+Existing app-lifespan tests require a configured baseline deployment or an offline
+placeholder provider key for initialization; mocked tests must never send paid requests.
+Viewer: npm ci, npm test, npm run build.
+Benchmark: python scripts/benchmark_video_v2.py --output docs/video-v2-benchmark.json.
+
