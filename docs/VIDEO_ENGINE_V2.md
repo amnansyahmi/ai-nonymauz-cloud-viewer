@@ -284,3 +284,41 @@ npm test && npm run build  (in the viewer repository)
 The placeholder key initializes offline test configuration only; tests mock model
 calls and must not send it to a live provider.
 
+
+## Screenshot error fixes — 2026-10-26
+
+Two independent paths were reported: a legacy HTML scene safe-area failure and
+a V2 planning/provider 503 before rendering.
+
+Legacy: the upstream checker uses a portrait top band of 170/1920 and bottom
+band of 480/1920, but generated layouts used 7–8vh top/bottom insets. Shared
+post-layout CSS now reserves 10vh at the top and 27vh at the bottom for portrait
+text, keeps scene visuals inside their grid tracks, and arranges square workflow
+cards in columns to prevent overflow. No validation rule was disabled and screen
+text was not marked data-world to evade checks.
+
+V2: RouterCompletion used candidates[:2], skipping the configured third fallback.
+It now tries all three within bounded call/overall time limits and returns safe
+per-alias error classes/HTTP codes without response bodies or credentials. The
+scene-authoring stage requests only a SceneBundle; locked request/brief/style/asset
+fields are assembled by the server. Compact schemas preserve validation keywords
+and property names. Scene schema payload fell from 8,650 to 3,174 characters; the
+concept completion cap is 2,200 rather than 3,600 tokens. Frontend errors display
+the stage/message instead of raw diagnostic JSON.
+
+Verification: 88 backend/video tests and 47 viewer tests passed; viewer build
+passed. Chromium checked 36 generated scenes (five generic, six product layouts
+and one generated-visual shell, each in three aspect ratios) at three timestamps:
+108 checks, zero unsafe-text failures. Removing the patch produced 39 failures
+with the same fixtures. Browser tests used Inter/JetBrains Mono variable fonts
+and the upstream CSS/motion assets. This is a safe-area regression check, not a
+complete upstream MP4 quality evaluation. Reproduce with
+scripts/build_video_safe_area_fixtures.py and scripts/check_video_safe_area.cjs.
+
+The live provider's exact failure was not observable: Vercel runtime log access
+returned 403 and no authenticated CLI credentials were available. These patches
+fix the confirmed failover/request-size problems but do not claim to repair an
+external provider quota, invalid credential, outage or account restriction. A
+new planning attempt after deployment will return specific safe diagnostics if
+it still fails. Existing failed legacy Sandbox jobs contain their old worker;
+start a new render after deployment. Nothing was merged into main.

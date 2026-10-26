@@ -36,6 +36,10 @@ function humanErrorBody(body: string): string {
     const parsed = JSON.parse(body) as { detail?: unknown; error?: unknown; message?: unknown };
     const message = parsed.detail ?? parsed.error ?? parsed.message;
     if (typeof message === 'string') return message;
+    if (message && typeof message === 'object' && 'message' in message) {
+      const detail = message as { message?: unknown; stage?: unknown };
+      if (typeof detail.message === 'string') return `${typeof detail.stage === 'string' ? detail.stage + ': ' : ''}${detail.message}`;
+    }
     if (message) return JSON.stringify(message);
   } catch {
     // Plain-text backend response; return it below.

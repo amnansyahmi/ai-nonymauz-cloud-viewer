@@ -62,6 +62,11 @@ describe('V2 planning', () => {
     expect(fetchMock.mock.calls.every(c=>c[1].headers.get('Authorization')==='Bearer test-key')).toBe(true);
     expect(JSON.parse(fetchMock.mock.calls[1][1].body).scene_id).toBe('beat-0');
   });
+  it('shows a readable stage error instead of raw provider JSON', async()=>{
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({detail:{stage:'provider',message:'ai-nonymauz-fast:QuotaError/429',render_started:false}}),{status:503})));
+    await expect(new ApiClient('https://example.test').videoPlan(project.request)).rejects.toThrow('HTTP 503: provider: ai-nonymauz-fast:QuotaError/429');
+  });
+
   it('authenticates export, cancellation, recovery and scene thumbnail requests', async()=>{
     const fetchMock=vi.fn().mockImplementation(async(url:string)=>url.includes('/thumbnails/')?new Response(new Blob(['jpeg'],{type:'image/jpeg'})):Response.json({}));
     vi.stubGlobal('fetch',fetchMock);
