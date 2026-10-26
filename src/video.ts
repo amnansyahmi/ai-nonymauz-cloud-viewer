@@ -24,7 +24,8 @@ export const VIDEO_STAGE_LABELS: Record<VideoJobStatus, string> = {
   checking: 'Checking scenes',
   rendering: 'Rendering MP4',
   completed: 'Video ready',
-  failed: 'Render failed'
+  failed: 'Render failed',
+  cancelled: 'Render cancelled'
 };
 
 export function videoError(error: unknown): string {
@@ -38,3 +39,4 @@ export function videoError(error: unknown): string {
   if (/HTTP 429/.test(message)) return 'Video quota or rate limit reached. Try again later.';
   return message.slice(0, 350);
 }
+

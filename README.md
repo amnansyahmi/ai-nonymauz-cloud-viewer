@@ -110,3 +110,16 @@ Voices come from the device/browser; install a Malay voice if none is available.
 No raw audio is uploaded to AI Nonymauz by this implementation. Verify real microphone,
 Malay recognition, and audio playback on your own desktop/Android/iOS devices before
 relying on it. Browser-service availability is outside the application's control.
+
+
+## Video Engine V2
+
+The Video tab contains a progressively disclosed creative storyboard editor with
+frame timing, transition and layer-motion editing, image replacement, and explicit
+preview/export controls. A backend advertising planning_v2_render_enabled is
+required to enable V2 exports; older backends keep these controls disabled.
+Completed V2 jobs show actual thumbnails and master playback. Cancellation and
+checkpoint recovery are available for V2 jobs.
+
+See [docs/VIDEO_ENGINE_V2.md](docs/VIDEO_ENGINE_V2.md) for the verified scope,
+configuration, API changes, performance measurements and remaining limitations.

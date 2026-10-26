@@ -1,3 +1,4 @@
+import { VideoRenderThumbnails } from '../components/VideoRenderThumbnails';
 import { VideoPlanEditor } from '../components/VideoPlanEditor';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
@@ -141,11 +142,11 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
   useEffect(() => {
     setPreviewUrl('');
-    if (!jobId || job?.job_id !== jobId || job.status !== 'completed' || !job.compressed_ready) return;
+    if (!jobId || job?.job_id !== jobId || job.status !== 'completed' || !(job.compressed_ready || job.output_ready)) return;
     const controller = new AbortController();
     let objectUrl = '';
     setPreviewLoading(true);
-    void client.videoFile(jobId, 'compressed', controller.signal)
+    void client.videoFile(jobId, job.compressed_ready ? 'compressed' : 'master', controller.signal)
       .then(blob => {
         if (controller.signal.aborted) return;
         objectUrl = URL.createObjectURL(blob);
@@ -161,7 +162,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [client, jobId, job?.job_id, job?.status, job?.compressed_ready]);
+  }, [client, jobId, job?.job_id, job?.status, job?.compressed_ready, job?.output_ready]);
 
   const update = <K extends keyof VideoGenerateRequest>(key: K, value: VideoGenerateRequest[K]) => {
     setForm(previous => ({ ...previous, [key]: value }));
@@ -352,7 +353,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
         </button>
       </div>
 
-      <VideoPlanEditor client={client} form={form} available={status?.planning_v2_enabled === true} />
+      <VideoPlanEditor client={client} form={form} available={status?.planning_v2_enabled === true}
+        renderAvailable={status?.planning_v2_render_enabled === true && !jobId}
+        onExport={next=>{setJob(next);setJobId(next.job_id);sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY,next.job_id);void refreshJobs();}} />
 
       <div className="panel video-service">
         <div className="video-service-heading">
@@ -492,8 +495,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               {job?.temporary && <p className="muted-copy" role="status">
                 Temporary render: download the video promptly. Vercel will discard its files when this Sandbox session ends.
               </p>}
-              {job?.status === 'completed' && !job.storyboard &&
+              {job?.status === 'completed' && !job.storyboard && job.renderer !== 'v2-pillow-1' &&
                 <p className="muted-copy">This job used the older template renderer. Delete it to create a new AI-directed product video.</p>}
+              {job?.renderer === 'v2-pillow-1' && <VideoRenderThumbnails client={client} job={job} />}
               {job?.storyboard && <section className="video-storyboard" aria-label="AI storyboard">
                 <div className="video-storyboard-heading"><b>AI storyboard</b><span>{job.storyboard_model}</span></div>
                 {job.storyboard_reference_mode === 'brief_and_captions' &&
@@ -506,6 +510,10 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 </li>)}</ol>
               </section>}
               {job?.status === 'failed' && <div className="error-banner"><b>Render failed</b><span>{(job.error || job.detail || 'Check the backend render job.').slice(0, 350)}</span></div>}
+              {job?.renderer === 'v2-pillow-1' && <div className="v2-actions">
+                {busy && <button type="button" className="secondary" onClick={()=>void client.cancelVideoExport(jobId).then(()=>setNotice('Cancellation requested.')).catch(reason=>setError(videoError(reason)))}>Cancel render</button>}
+                {(job.status==='failed' || job.status==='cancelled' || job.recovery_recommended) && <button type="button" className="secondary" onClick={()=>void client.retryVideoExport(jobId).then(()=>{setJob(previous=>previous?{...previous,status:'rendering'}:previous);setPollRevision(value=>value+1);setNotice('Recovery requested.');}).catch(reason=>setError(videoError(reason)))}>Resume from checkpoints</button>}
+              </div>}
               {busy && <p className="muted-copy">Rendering continues on the backend. Status updates every 2 seconds.</p>}
               {job?.status === 'completed' && (
                 <div className="video-output">

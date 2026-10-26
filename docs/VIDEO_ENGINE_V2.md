@@ -1,5 +1,8 @@
 # Video Engine V2 — audit and implementation plan
 
+Current export/recovery status is documented in the follow-up section at the end.
+The earlier planning-only status is retained as implementation history.
+
 Audit date: 2026-10-26. Backend base: 6dc279fbbfdec0cfa1cc9d3ec852beb9db7bb63f.
 Viewer base: d54c59a9e35d7854cb9cdd95c4954c89862ee898. Branch: feat/video-engine-v2 in both repositories.
 
@@ -158,4 +161,126 @@ Existing app-lifespan tests require a configured baseline deployment or an offli
 placeholder provider key for initialization; mocked tests must never send paid requests.
 Viewer: npm ci, npm test, npm run build.
 Benchmark: python scripts/benchmark_video_v2.py --output docs/video-v2-benchmark.json.
+
+
+## Follow-up implementation — deterministic export and recovery
+
+This section supersedes the earlier planning-only limitations. The core V2 path now
+renders real MP4 files locally. It remains an experimental 2D/2.5D engine, not a
+completed implementation of the entire master specification or a demonstrated
+professional creative-quality target.
+
+### What is implemented
+- motion.py: timestamp-independent entrance/exit choreography, smooth/cubic/spring
+  easing, drift/pulse/orbit/trace behaviors and depth-weighted camera transforms.
+- rendering.py: safe declarative layer drawing with Pillow; actual text fitting,
+  supplied-image contain/cover, explicit low-resolution rejection, deterministic
+  particles, subtle lighting/texture, palette/font consistency and caption groups.
+  No model-authored executable JavaScript is used. Orbit is a 2.5D approximation.
+- runtime.py: scene MP4 checkpoints, content-addressed cache identities including
+  assets/fonts/source/encoder/presets, per-job process leases, two attempts per
+  scene, three worker runs, cooperative cancellation, stale-session recovery,
+  partial-completion state, real thumbnail generation, compositing and strict media
+  validation. FFprobe verifies dimensions/fps/frame count/duration/audio presence;
+  FFmpeg fully decodes outputs before completion. Mid-scene subject/freeze checks
+  catch empty or motion-instructed frozen scenes. Intentional entrance/exit blank
+  frames and deliberate hold shots are not automatically called failures.
+- export.py and worker.py: isolated Vercel Sandbox dispatch using existing auth,
+  resources, snapshot configuration and 24-hour retention. Worker prerequisites
+  are Python/Pillow/Pydantic, FFmpeg and DejaVu fonts; Chromium is unnecessary for
+  V2 export. Setup, render and encoding share a bounded execution budget. Source
+  upload/dispatch is covered by mocked Sandbox tests, not a live deployment test.
+- audio.py: measured PCM duration, silence/clipping checks, narration boundary
+  rejection and loudness-normalized scene narration mixing. Existing Gemini TTS is
+  reused; long lines are rejected before allocation rather than silently trimmed.
+  Captions use estimated rhythm from measured clip duration, not forced alignment.
+  A lower-text/caption overlap is rejected before export.
+- Viewer: explicit preview/export, draft/standard/high presets, configurable 24/30
+  fps, transition choice, per-layer motion controls, image replacement, rendered
+  thumbnails, master playback, cancellation and checkpoint recovery. Older jobs
+  continue through their existing flow. Actual V2 exports use the new route.
+
+### API and configuration
+POST /v1/video/v2/render accepts project, quality (draft|standard|high),
+images keyed by used asset ID, voice_over and captions. Image bindings use the
+existing bounded MotionVideoImage schema. Exactly the used images must be bound.
+POST /v1/video/v2/jobs/{job_id}/cancel requests cancellation.
+POST /v1/video/v2/jobs/{job_id}/retry resumes successful checkpoints.
+GET /v1/video/v2/jobs/{job_id}/thumbnails/{scene_id} streams a rendered JPEG.
+Existing /v1/video/jobs/{job_id} and download/delete/history APIs are reused.
+All V2 operations inherit the existing video authentication requirement.
+
+MOTION_VIDEO_V2_RENDER_ENABLED defaults to false. Enable only in a credentialed
+development deployment after inspecting a real Sandbox smoke test. No main branch
+was merged, no production environment variable was changed, and no paid live
+generation was started during this work.
+
+Draft: 360-pixel short edge, ultrafast CRF 28.
+Standard: 720-pixel short edge, veryfast CRF 21.
+High: 1080-pixel short edge, 2x antialiasing, medium CRF 18.
+24/30 fps and portrait/landscape/square are schema-validated. Images are never
+silently enlarged beyond their source resolution at the intended output placement.
+
+### Verification evidence
+- Latest full backend suite: 526 passed, 3 failed, 8 subtests passed. The same
+  three RAG-ranking failures had already been reproduced on the unchanged baseline.
+  They were not suppressed. New video tests cover actual FFmpeg encoding/decoding,
+  exact crossfade/wipe/depth overlap frame budgets, real audio mixing with synthetic
+  test PCM, cancellation/resume, leases, cache invalidation, retry bounds, auth,
+  feature gating, Sandbox source dispatch and cancel/retry contracts.
+- Targeted video/backend suite: 85 tests passed, 3 subtests passed.
+- Viewer: 46 tests passed and TypeScript/Vite production build passed.
+- Browser: both example MP4s played in Chromium at 640x360, duration 9 seconds,
+  currentTime advanced with no media errors. A 390x844 touch viewport completed
+  mocked planning -> explicit export -> rendered thumbnails -> playback, with
+  three loaded thumbnails, no horizontal overflow and no page errors.
+- Local higher-resolution smoke: actual 720x1280 portrait/24 fps/144 frames/6s,
+  6.493s wall time; actual 1080x1080 high/24 fps/144 frames/6s, 40.562s wall time.
+  Both fully decoded. See video-v2-render-smoke.json. Peak Python worker RSS was
+  approximately 63 MiB and 121 MiB respectively; FFmpeg child memory/CPU is excluded.
+- Two hand-directed, silent 9-second examples are generated by
+  scripts/render_video_v2_examples.py. They use different narrative orders,
+  objects, compositions and pacing: source -> transfer -> home versus
+  room -> converter -> source. They are renderer studies, not evidence that the
+  live model autonomously generates professional creative variation.
+- Local 360p example cold renders took approximately 3.2–3.8s; a cached rerun took
+  1.526s with all three scene cache hits. First scene thumbnails were available
+  after approximately 0.675–1.233s. These exclude Sandbox boot/package installation
+  and model/provider latency. Production cost and reliability remain unknown.
+
+### Remaining limitations and smallest next steps
+1. Live model and Vercel verification: credentials were absent in this workspace.
+   Use a development deployment, enable the V2 flag, render one six-second draft,
+   inspect playback, then inject a scene interruption and exercise retry.
+2. True 3D, shape morphing, SVG-path scenes, motion trails, physical depth of field
+   and character consistency are not implemented. True-3D direction and unverified
+   match/motion cuts explicitly fail capability checks. A separate deterministic
+   Three.js/Blender worker is the smallest practical extension for true 3D; its
+   CPU/GPU/time costs must be measured before advertising support.
+3. New external asset generation and licensed music/SFX orchestration are not
+   implemented. Unresolved generation-required assets block export. Upload a
+   suitable asset through the editor; provenance and unverified rights stay visible
+   in the project. Existing V1 image-generation tools remain available.
+4. Captions are estimated, and audio tests use synthetic PCM. Real English/Malaysian
+   Malay pronunciation, natural pauses and provider reliability need live review.
+   Music ducking is not claimed because V2 currently mixes narration only.
+5. The ten-category benchmark is still an offline selector benchmark. A real
+   multi-prompt/multi-seed video benchmark, visual embeddings, semantic/prompt
+   adherence evaluation and professional human creative review remain outstanding.
+6. Durability ends with the host/Sandbox retention policy. There is no external job
+   database or fleet-wide transactional admission queue. A shared database/object
+   store plus bounded dispatcher is needed before claiming indefinite recovery or
+   hard account-wide concurrency limits.
+7. Pixel QA is bounded and deterministic, not complete semantic vision QA.
+   Intentional cropping versus accidental cropping, character identity and detailed
+   narrative quality still need human/model review. No subjective score triggers
+   blind full-video regeneration.
+
+### Local commands
+python scripts/render_video_v2_examples.py --output /absolute/scratch/output
+GROQ_API_KEY=offline-test-placeholder python -m pytest tests/video_v2 -q
+npm test && npm run build  (in the viewer repository)
+
+The placeholder key initializes offline test configuration only; tests mock model
+calls and must not send it to a live provider.
 

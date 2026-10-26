@@ -13,7 +13,7 @@ export interface MotionPlan {
 }
 export interface LayerPlan {
   id: string; depth: 'background' | 'middle' | 'foreground'; kind: 'text' | 'image' | 'circle' | 'rectangle' | 'line' | 'particles';
-  description: string; text: string; asset_id: string | null; x: number; y: number; width: number; height: number;
+  description: string; text: string; asset_id: string | null; image_fit?: 'contain' | 'cover'; x: number; y: number; width: number; height: number;
   color_role: 'foreground' | 'accent' | 'secondary'; motion: MotionPlan;
 }
 export interface ScenePlan {

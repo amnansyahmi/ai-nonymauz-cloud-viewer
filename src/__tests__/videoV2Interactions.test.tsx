@@ -46,6 +46,28 @@ describe('Planning editor interactions (DOM, not browser layout)', () => {
     } finally { await act(async()=>root.unmount()); }
   });
 
+  it('exports only after an explicit action and returns the created job', async()=>{
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+    const onExport=vi.fn();
+    const fetchMock=vi.fn().mockImplementation(async(url:string)=>{
+      if(url.endsWith('/render')) return Response.json({job_id:'vid_export',status:'queued',renderer:'v2-pillow-1'});
+      if(url.endsWith('/validate')) return Response.json({render_ready:true,metrics:{},diagnostics:[]});
+      return Response.json({project:fixture,render_ready:false,metrics:{},diagnostics:[],telemetry:{}});
+    });
+    vi.stubGlobal('fetch',fetchMock);
+    const container=document.createElement('div');document.body.append(container);containers.push(container);
+    const root=createRoot(container);
+    try {
+      await act(async()=>root.render(<VideoPlanEditor available renderAvailable onExport={onExport} client={new ApiClient('https://example.test','offline')} form={DEFAULT_VIDEO_REQUEST}/>));
+      await act(async()=>button(container,'Plan storyboard').click());
+      expect(fetchMock.mock.calls.some(call=>String(call[0]).endsWith('/render'))).toBe(false);
+      await act(async()=>button(container,'Render preview').click());
+      expect(onExport).toHaveBeenCalledWith(expect.objectContaining({job_id:'vid_export'}));
+      const request=fetchMock.mock.calls.find(call=>String(call[0]).endsWith('/render'));
+      expect(request).toBeDefined();
+    } finally {await act(async()=>root.unmount());}
+  });
+
   it('shows provider errors without losing the page', async()=>{
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({detail:'Provider unavailable'}),{status:503})));

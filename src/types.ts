@@ -1,3 +1,4 @@
+import type { ProjectPlan } from './videoV2';
 export type AppTab = 'chat' | 'diagnostics' | 'rag' | 'benchmark' | 'image' | 'video';
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -188,7 +189,7 @@ export interface ImageGenerateResponse {
 
 export type VideoAspectRatio = '9:16' | '16:9' | '1:1';
 export type VideoQuality = 'preview' | 'standard';
-export type VideoJobStatus = 'queued' | 'preparing' | 'planning' | 'building' | 'checking' | 'rendering' | 'completed' | 'failed';
+export type VideoJobStatus = 'queued' | 'preparing' | 'planning' | 'building' | 'checking' | 'rendering' | 'completed' | 'failed' | 'cancelled';
 export type VideoVariant = 'compressed' | 'master';
 
 export interface VideoStatusResponse {
@@ -252,6 +253,8 @@ export interface VideoStoryboard {
 }
 
 export interface VideoJobResponse {
+  project?: ProjectPlan;
+  recovery_recommended?: boolean;
   job_id: string;
   status: VideoJobStatus;
   temporary?: boolean;

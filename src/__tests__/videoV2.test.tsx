@@ -62,9 +62,24 @@ describe('V2 planning', () => {
     expect(fetchMock.mock.calls.every(c=>c[1].headers.get('Authorization')==='Bearer test-key')).toBe(true);
     expect(JSON.parse(fetchMock.mock.calls[1][1].body).scene_id).toBe('beat-0');
   });
+  it('authenticates export, cancellation, recovery and scene thumbnail requests', async()=>{
+    const fetchMock=vi.fn().mockImplementation(async(url:string)=>url.includes('/thumbnails/')?new Response(new Blob(['jpeg'],{type:'image/jpeg'})):Response.json({}));
+    vi.stubGlobal('fetch',fetchMock);
+    const client=new ApiClient('https://example.test','test-key');
+    await client.exportVideoPlan(project,'draft');
+    await client.cancelVideoExport('vid_test');
+    await client.retryVideoExport('vid_test');
+    await client.videoThumbnail('vid_test','beat-0');
+    expect(fetchMock.mock.calls.map(c=>c[0])).toEqual([
+      'https://example.test/v1/video/v2/render','https://example.test/v1/video/v2/jobs/vid_test/cancel',
+      'https://example.test/v1/video/v2/jobs/vid_test/retry','https://example.test/v1/video/v2/jobs/vid_test/thumbnails/beat-0']);
+    expect(fetchMock.mock.calls.every(c=>c[1].headers.get('Authorization')==='Bearer test-key')).toBe(true);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).quality).toBe('draft');
+  });
+
   it('renders accessible planning controls without claiming export support', () => {
     const html=renderToString(<VideoPlanEditor available client={new ApiClient('https://example.test')} form={DEFAULT_VIDEO_REQUEST}/>);
-    expect(html).toContain('does not export video');
+    expect(html).toContain('Exports require V2 rendering to be enabled');
     expect(html).toContain('Plan storyboard');
     expect(html).toContain('aria-live="polite"');
   });

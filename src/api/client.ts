@@ -164,6 +164,23 @@ export class ApiClient {
     });
   }
 
+  async videoThumbnail(jobId: string, sceneId: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await this.checkedFetch(`/v1/video/v2/jobs/${encodeURIComponent(jobId)}/thumbnails/${encodeURIComponent(sceneId)}`, { signal });
+    return response.blob();
+  }
+
+  exportVideoPlan(project: ProjectPlan, quality: 'draft' | 'standard' | 'high', images: Record<string, NonNullable<import('../types').VideoGenerateRequest['images']>[number]> = {}, voiceOver = false, captions = false): Promise<VideoJobResponse> {
+    return this.json('/v1/video/v2/render', { method: 'POST', body: JSON.stringify({ project, quality, images, voice_over: voiceOver, captions }) });
+  }
+
+  cancelVideoExport(jobId: string): Promise<{ cancel_requested: boolean }> {
+    return this.json(`/v1/video/v2/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+  }
+
+  retryVideoExport(jobId: string): Promise<{ retry_requested: boolean }> {
+    return this.json(`/v1/video/v2/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
+  }
+
   videoPlan(request: PlanRequest, signal?: AbortSignal): Promise<PlanResponse> {
     return this.json('/v1/video/v2/plan', { method: 'POST', body: JSON.stringify(request), signal });
   }
