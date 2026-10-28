@@ -49,6 +49,20 @@ describe('HyperFrames engine in Video Lab', () => {
     expect(JSON.parse(init.body).engine).toBe('hyperframes');
   });
 
+  it('forwards preview cancellation so edited briefs can abandon planning', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const pending = new ApiClient('https://example.test', 'secret')
+      .previewVideo({ ...DEFAULT_VIDEO_REQUEST, engine: 'hyperframes' }, controller.signal);
+    const rejected = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort();
+    await rejected;
+    expect(fetchMock.mock.calls[0][1].signal).toBe(controller.signal);
+  });
+
   it('renders the preview frame at the film aspect ratio with a loading state', () => {
     const html = renderToString(<FilmPreview html="<html></html>" width={720} height={1280} />);
     expect(html).toContain('data-orientation="portrait"');

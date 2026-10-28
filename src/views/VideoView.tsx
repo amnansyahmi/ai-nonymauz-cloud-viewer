@@ -57,6 +57,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [filmPreview, setFilmPreview] = useState<VideoPreviewResponse>();
   const [previewing, setPreviewing] = useState(false);
+  const previewController = useRef<AbortController | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const resultPanel = useRef<HTMLDivElement>(null);
 
@@ -174,7 +175,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
   // A preview shows one specific plan. Any change to the brief or settings
   // makes it stale, so it is discarded rather than rendered by mistake.
-  useEffect(() => { setFilmPreview(undefined); }, [form, images]);
+  useEffect(() => {
+    previewController.current?.abort();
+    setPreviewing(false);
+    setFilmPreview(undefined);
+    return () => { previewController.current?.abort(); };
+  }, [form, images, client, status?.default_engine]);
 
   const engine = resolveVideoEngine(status, form.engine);
   const maxDuration = videoMaxDuration(status, engine);
@@ -205,16 +211,19 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
   async function previewFilm() {
     if (previewing || !ready || !form.prompt.trim() || engine !== 'hyperframes') return;
+    previewController.current?.abort();
+    const controller = new AbortController();
+    previewController.current = controller;
     setPreviewing(true);
     setError('');
     setNotice('');
     try {
-      const result = await client.previewVideo(requestBody());
-      setFilmPreview(result);
+      const result = await client.previewVideo(requestBody(), controller.signal);
+      if (!controller.signal.aborted) setFilmPreview(result);
     } catch (reason) {
-      setError(videoError(reason));
+      if (!controller.signal.aborted) setError(videoError(reason));
     } finally {
-      setPreviewing(false);
+      if (!controller.signal.aborted) setPreviewing(false);
     }
   }
 
@@ -529,7 +538,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
             </label>
           </div>
           <label className="video-sound"><input type="checkbox" checked={form.sound_effects}
-            onChange={event => update('sound_effects', event.target.checked)} /> Soundtrack <small>Quiet score; cues only for visible actions</small></label>
+            onChange={event => update('sound_effects', event.target.checked)} /> {engine === 'hyperframes' ? 'Sound effects' : 'Soundtrack'} <small>{engine === 'hyperframes' ? 'Original cues matched to motion; quieter under narration' : 'Quiet score; cues only for visible actions'}</small></label>
           <label className="video-sound"><input type="checkbox" checked={form.voice_over}
             onChange={event => update('voice_over', event.target.checked)} /> AI voice-over <small>Uses Gemini free-tier TTS quota; Malay or English narration</small></label>
           <p className="field-help">Standard quality uses more render compute.</p>
