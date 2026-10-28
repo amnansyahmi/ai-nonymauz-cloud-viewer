@@ -3,16 +3,16 @@ import { ApiClient } from '../api/client';
 import { FilmPreview } from '../components/FilmPreview';
 import { ImageIcon, PlayIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
 import {
-  DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS, formatDuration,
-  resolveVideoEngine, videoError, videoMaxDuration
+  DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, IMAGE_ROLE_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS,
+  formatDuration, resolveVideoEngine, videoError, videoMaxDuration, videoMaxImages
 } from '../video';
 import {
-  MAX_VIDEO_IMAGES, MAX_VIDEO_TOTAL_IMAGE_BYTES, prepareVideoImage, videoImagePayload
+  MAX_VIDEO_TOTAL_IMAGE_BYTES, prepareVideoImage, videoImagePayload
 } from '../videoImages';
 import type { VideoImageDraft } from '../videoImages';
 import type {
-  ChatSettings, ImageStatusResponse, VideoAspectRatio, VideoEngine, VideoGenerateRequest, VideoJobResponse,
-  VideoPreviewResponse, VideoQuality, VideoStatusResponse, VideoVariant
+  ChatSettings, ImageStatusResponse, VideoAspectRatio, VideoEngine, VideoGenerateRequest, VideoImageRole,
+  VideoJobResponse, VideoPreviewResponse, VideoQuality, VideoStatusResponse, VideoVariant
 } from '../types';
 
 const aspectOptions: Array<[VideoAspectRatio, string]> = [
@@ -179,6 +179,11 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const engine = resolveVideoEngine(status, form.engine);
   const maxDuration = videoMaxDuration(status, engine);
   const hyperframesOffered = Boolean(status?.engines?.hyperframes);
+  const maxImages = videoMaxImages(status, engine);
+  const tooManyImages = images.length > maxImages;
+  // Roles only change anything in the motion-design engine.
+  const roleChoices: VideoImageRole[] | null = engine === 'hyperframes'
+    ? (status?.engines?.hyperframes?.image_roles ?? ['photo', 'screenshot', 'logo']) : null;
 
   function changeEngine(next: VideoEngine) {
     setForm(previous => ({
@@ -214,7 +219,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   }
 
   function appendImages(next: VideoImageDraft[]) {
-    const limit = Math.min(status?.max_images ?? MAX_VIDEO_IMAGES, MAX_VIDEO_IMAGES);
+    const limit = maxImages;
     if (images.length + next.length > limit) throw new Error(`Use up to ${limit} images per video.`);
     const total = [...images, ...next].reduce((sum, item) => sum + item.sizeBytes, 0);
     if (total > (status?.max_total_image_bytes ?? MAX_VIDEO_TOTAL_IMAGE_BYTES)) {
@@ -241,7 +246,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   }
 
   async function generateImageForVideo() {
-    if (generatingImage || preparingImage || images.length >= MAX_VIDEO_IMAGES || imageStatus?.enabled !== true) return;
+    if (generatingImage || preparingImage || images.length >= maxImages || imageStatus?.enabled !== true) return;
     setGeneratingImage(true);
     setImageError('');
     try {
@@ -442,9 +447,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
             <textarea rows={6} value={form.prompt} onChange={event => update('prompt', event.target.value)} />
           </label>
           <div className="video-image-section">
-            <div className="video-image-heading"><div><b>Reference images</b><span>{images.length} / {Math.min(status?.max_images ?? MAX_VIDEO_IMAGES, MAX_VIDEO_IMAGES)} images</span></div>
+            <div className="video-image-heading"><div><b>Reference images</b><span>{images.length} / {maxImages} images</span></div>
               <button type="button" className="secondary" onClick={() => imageInput.current?.click()}
-                disabled={preparingImage || generatingImage || images.length >= MAX_VIDEO_IMAGES || Boolean(jobId) || status?.image_input_enabled === false}>
+                disabled={preparingImage || generatingImage || images.length >= maxImages || Boolean(jobId) || status?.image_input_enabled === false}>
                 <ImageIcon /> {preparingImage ? 'Preparing…' : 'Add images'}
               </button>
               <input ref={imageInput} hidden type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -461,6 +466,10 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                   <div className="video-image-row-head"><b>Image {index + 1}</b><span>{formatBytes(image.sizeBytes)}</span></div>
                   <label>Caption <input maxLength={80} value={image.caption} placeholder="Optional"
                     onChange={event => editImage(image.id, { caption: event.target.value })} /></label>
+                  {roleChoices && <label>Use as <select value={image.role ?? 'photo'}
+                    onChange={event => editImage(image.id, { role: event.target.value as VideoImageRole })}>
+                    {roleChoices.map(role => <option value={role} key={role}>{IMAGE_ROLE_LABELS[role]}</option>)}
+                  </select></label>}
                   <label>Framing <select value={image.fit} onChange={event => editImage(image.id, { fit: event.target.value as 'contain' | 'cover' })}>
                     <option value="contain">Fit full image</option><option value="cover">Fill frame / crop</option>
                   </select></label>
@@ -477,7 +486,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               </div>)}</div>
             </>}
             {images.length > 0 && <p className="field-help">Depth cutout runs on your device at no API cost. First use downloads an approximately 40 MB model; review the result before rendering. Original photos also work without a cutout.</p>}
-            {images.length < MAX_VIDEO_IMAGES && <div className="video-image-generate">
+            {images.length < maxImages && <div className="video-image-generate">
               <label>Generate an image for a scene <input value={imagePrompt} onChange={event => setImagePrompt(event.target.value)}
                 placeholder="Image description (or use video prompt)" /></label>
               <button type="button" className="secondary" onClick={() => void generateImageForVideo()}
@@ -486,6 +495,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               </button>
               <p className="field-help">Uses the current Image Lab quota. Your images stay attached to this render job.</p>
             </div>}
+            {tooManyImages && <div className="error-banner compact-error"><span>The {engine === 'legacy' ? 'classic renderer' : 'selected engine'} takes up to {maxImages} images. Remove {images.length - maxImages} or switch to Motion design.</span></div>}
             {imageError && <div className="error-banner compact-error"><span>{imageError}</span></div>}
           </div>
           <div className="video-duration">
@@ -525,11 +535,11 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           <p className="field-help">Standard quality uses more render compute.</p>
           <div className="video-actions">
             {engine === 'hyperframes' && <button className="secondary video-preview-button" type="button" onClick={() => void previewFilm()}
-              disabled={!ready || !form.prompt.trim() || previewing || submitting || preparingImage || generatingImage || Boolean(jobId)}>
+              disabled={!ready || !form.prompt.trim() || previewing || submitting || preparingImage || generatingImage || Boolean(jobId) || tooManyImages}>
               <PlayIcon /> {previewing ? 'Planning…' : filmPreview ? 'New version' : 'Preview'}
             </button>}
             <button className="primary video-generate" type="button" onClick={() => void generate()}
-              disabled={!ready || !form.prompt.trim() || submitting || previewing || preparingImage || generatingImage || Boolean(jobId) || (images.length > 0 && status?.image_input_enabled !== true)}>
+              disabled={!ready || !form.prompt.trim() || submitting || previewing || preparingImage || generatingImage || Boolean(jobId) || tooManyImages || (images.length > 0 && status?.image_input_enabled !== true)}>
               <VideoIcon /> {submitting
                 ? (filmPreview ? 'Starting render…' : form.creative_mode === 'auto' || engine === 'hyperframes' ? 'Planning film…' : 'Starting render…')
                 : filmPreview ? 'Render this version' : 'Generate video'}

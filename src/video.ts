@@ -1,4 +1,4 @@
-import type { FilmBlock, VideoEngine, VideoGenerateRequest, VideoJobStatus, VideoStatusResponse } from './types';
+import type { FilmBlock, VideoEngine, VideoGenerateRequest, VideoImageRole, VideoJobStatus, VideoStatusResponse } from './types';
 
 export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
   prompt: 'Launch AI Nonymauz. Show a Malay question about building a .NET API, a concise answer with a code preview, then the AI Nonymauz name as the payoff. Use a clean product interface and a confident, modern pace.',
@@ -64,6 +64,18 @@ export function formatDuration(seconds: number): string {
   return `${minutes}:${String(rest).padStart(2, '0')} min`;
 }
 
+/** Images the chosen engine accepts. Older backends report one limit (3). */
+export function videoMaxImages(status: VideoStatusResponse | undefined, engine: ConcreteEngine): number {
+  const perEngine = status?.engines?.[engine]?.max_images;
+  return Math.min(perEngine ?? Math.min(status?.max_images ?? 3, 3), 5);
+}
+
+export const IMAGE_ROLE_LABELS: Record<VideoImageRole, string> = {
+  photo: 'Photo',
+  screenshot: 'App screenshot',
+  logo: 'Logo'
+};
+
 export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
   hook: 'Hook',
   kinetic: 'Statement',
@@ -73,5 +85,12 @@ export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
   compare: 'Before / after',
   quote: 'Quote',
   image: 'Image',
-  cta: 'Close'
+  cta: 'Close',
+  device: 'App screen',
+  chart: 'Chart',
+  map: 'Map',
+  logo: 'Logo',
+  price: 'Price',
+  slider: 'Photo before / after',
+  wordswap: 'Word flip'
 };

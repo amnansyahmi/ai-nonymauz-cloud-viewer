@@ -210,11 +210,18 @@ export interface VideoStatusResponse {
   max_image_bytes?: number;
   max_total_image_bytes?: number;
   /** Per-engine limits; absent on backends without the HyperFrames engine. */
-  engines?: Partial<Record<Exclude<VideoEngine, 'auto'>, { max_duration_seconds?: number; preview?: boolean }>>;
+  engines?: Partial<Record<Exclude<VideoEngine, 'auto'>, {
+    max_duration_seconds?: number;
+    preview?: boolean;
+    max_images?: number;
+    image_roles?: VideoImageRole[];
+    blocks?: FilmBlock[];
+  }>>;
   default_engine?: Exclude<VideoEngine, 'auto'>;
 }
 
-export type FilmBlock = 'hook' | 'kinetic' | 'stat' | 'list' | 'steps' | 'compare' | 'quote' | 'image' | 'cta';
+export type FilmBlock = 'hook' | 'kinetic' | 'stat' | 'list' | 'steps' | 'compare' | 'quote' | 'image' | 'cta'
+  | 'device' | 'chart' | 'map' | 'logo' | 'price' | 'slider' | 'wordswap';
 
 export interface FilmBeat {
   block: FilmBlock;
@@ -254,11 +261,15 @@ export interface VideoPreviewResponse {
   note?: string;
 }
 
+export type VideoImageRole = 'photo' | 'screenshot' | 'logo';
+
 export interface VideoImageInput {
   name: string;
   data_url: string;
   caption: string;
   fit: 'contain' | 'cover';
+  /** How the motion-design engine uses the image. Older backends ignore it. */
+  role?: VideoImageRole;
 }
 
 export interface VideoGenerateRequest {
