@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ApiClient } from '../api/client';
+import { ApiClient, RAG_MAX_CONTEXT_CHARS } from '../api/client';
 import { useChat } from '../hooks/useChat';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import {
@@ -661,7 +661,7 @@ export function ChatView({ settings, modelOptions, profiles, onSettingsChange }:
                   <input
                     type="number"
                     min="500"
-                    max="30000"
+                    max={RAG_MAX_CONTEXT_CHARS}
                     step="500"
                     value={settings.ragMaxChars}
                     onChange={event => onSettingsChange({ ragMaxChars: Number(event.target.value) })}

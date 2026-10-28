@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ApiClient } from '../api/client';
+import { ApiClient, RAG_MAX_CONTEXT_CHARS } from '../api/client';
 import { SearchIcon } from '../components/Icons';
 import type { ChatSettings, RagSearchResponse } from '../types';
 
@@ -61,7 +61,7 @@ export function RagView({ settings }: { settings: ChatSettings }) {
           </label>
           <label>
             Context chars
-            <input type="number" min="500" max="30000" step="500" value={maxChars} onChange={event => setMaxChars(Number(event.target.value))} />
+            <input type="number" min="500" max={RAG_MAX_CONTEXT_CHARS} step="500" value={maxChars} onChange={event => setMaxChars(Number(event.target.value))} />
           </label>
           <button className="primary icon-text rag-run" type="button" disabled={loading || !query.trim()} onClick={() => void inspect()}>
             <SearchIcon /> {loading ? 'Inspecting' : 'Inspect retrieval'}
