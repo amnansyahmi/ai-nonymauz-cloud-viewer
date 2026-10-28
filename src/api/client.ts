@@ -35,6 +35,20 @@ export function clampRagChars(value: number): number {
   return Math.min(Math.max(Math.round(value), 0), RAG_MAX_CONTEXT_CHARS);
 }
 
+// Browsers report a dropped or blocked request as a bare TypeError with a
+// vendor-specific message and no status. Name the likely causes instead.
+const NETWORK_FAILURE = /^(Load failed|Failed to fetch|NetworkError when attempting to fetch resource\.?|Network request failed)$/i;
+
+export function networkError(reason: unknown): unknown {
+  if (reason instanceof DOMException && reason.name === 'AbortError') return reason;
+  const message = reason instanceof Error ? reason.message : String(reason);
+  if (reason instanceof TypeError && NETWORK_FAILURE.test(message.trim())) {
+    return new Error('No response from the backend. The connection may have dropped, the request timed out, '
+      + 'or the server failed without a readable error. Check your connection and try again.');
+  }
+  return reason;
+}
+
 export function normalizeBackendUrl(value: string): string {
   return (value || DEFAULT_BACKEND).trim().replace(/\/+$/, '');
 }
@@ -107,10 +121,15 @@ export class ApiClient {
   }
 
   private async checkedFetch(path: string, init?: RequestInit): Promise<Response> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers: this.headers(init?.headers, init?.body)
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        headers: this.headers(init?.headers, init?.body)
+      });
+    } catch (reason) {
+      throw networkError(reason);
+    }
 
     if (!response.ok) {
       const body = await response.text();
