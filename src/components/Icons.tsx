@@ -53,6 +53,9 @@ export const StopIcon = (props: IconProps) => (
 export const SendIcon = (props: IconProps) => (
   <svg {...common} {...props}><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></svg>
 );
+export const PlayIcon = (props: IconProps) => (
+  <svg {...common} {...props}><polygon points="6 3 20 12 6 21 6 3" /></svg>
+);
 export const TrashIcon = (props: IconProps) => (
   <svg {...common} {...props}><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13" /></svg>
 );

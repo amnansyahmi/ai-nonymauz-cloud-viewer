@@ -190,6 +190,7 @@ export type VideoAspectRatio = '9:16' | '16:9' | '1:1';
 export type VideoQuality = 'preview' | 'standard';
 export type VideoJobStatus = 'queued' | 'preparing' | 'planning' | 'building' | 'checking' | 'rendering' | 'completed' | 'failed';
 export type VideoVariant = 'compressed' | 'master';
+export type VideoEngine = 'auto' | 'legacy' | 'hyperframes';
 
 export interface VideoStatusResponse {
   enabled: boolean;
@@ -208,6 +209,49 @@ export interface VideoStatusResponse {
   max_images?: number;
   max_image_bytes?: number;
   max_total_image_bytes?: number;
+  /** Per-engine limits; absent on backends without the HyperFrames engine. */
+  engines?: Partial<Record<Exclude<VideoEngine, 'auto'>, { max_duration_seconds?: number; preview?: boolean }>>;
+  default_engine?: Exclude<VideoEngine, 'auto'>;
+}
+
+export type FilmBlock = 'hook' | 'kinetic' | 'stat' | 'list' | 'steps' | 'compare' | 'quote' | 'image' | 'cta';
+
+export interface FilmBeat {
+  block: FilmBlock;
+  kicker: string;
+  headline: string;
+  emphasis: string;
+  support: string;
+  items: string[];
+  metric: string;
+  metric_label: string;
+  image_index: number | null;
+  narration: string;
+  transition_in: string;
+}
+
+export interface FilmPlan {
+  concept: string;
+  hook_style: string;
+  theme: 'dark' | 'light';
+  accent: string;
+  font_pair: string;
+  energy: 'calm' | 'balanced' | 'energetic';
+  beats: FilmBeat[];
+}
+
+export interface VideoPreviewResponse {
+  engine: 'hyperframes';
+  plan: FilmPlan;
+  planner_model: string;
+  variation_seed: number;
+  html: string;
+  width: number;
+  height: number;
+  duration: number;
+  transitions: string[];
+  beats: Array<{ block: FilmBlock; start: number; end: number; headline: string }>;
+  note?: string;
 }
 
 export interface VideoImageInput {
@@ -229,6 +273,10 @@ export interface VideoGenerateRequest {
   creative_mode: 'auto' | 'template';
   title?: string;
   images?: VideoImageInput[];
+  engine?: VideoEngine;
+  variation_seed?: number;
+  /** A plan from /v1/video/preview: renders exactly the previewed film. */
+  film_plan?: FilmPlan;
 }
 
 export interface VideoStoryboardScene {
@@ -265,6 +313,11 @@ export interface VideoJobResponse {
   storyboard?: VideoStoryboard | null;
   storyboard_model?: string | null;
   storyboard_reference_mode?: 'vision' | 'brief_and_captions' | null;
+  engine?: Exclude<VideoEngine, 'auto'>;
+  film_plan?: FilmPlan | null;
+  planner_model?: string | null;
+  variation_seed?: number;
+  transitions?: string[];
 }
 
 export interface RagSearchResponse {
