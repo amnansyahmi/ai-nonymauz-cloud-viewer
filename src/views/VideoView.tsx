@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
-import { ImageIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
-import { DEFAULT_VIDEO_REQUEST, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS, videoError } from '../video';
+import { FilmPreview } from '../components/FilmPreview';
+import { ImageIcon, PlayIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
+import {
+  DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS, formatDuration,
+  resolveVideoEngine, videoError, videoMaxDuration
+} from '../video';
 import {
   MAX_VIDEO_IMAGES, MAX_VIDEO_TOTAL_IMAGE_BYTES, prepareVideoImage, videoImagePayload
 } from '../videoImages';
 import type { VideoImageDraft } from '../videoImages';
 import type {
-  ChatSettings, ImageStatusResponse, VideoAspectRatio, VideoGenerateRequest, VideoJobResponse,
-  VideoQuality, VideoStatusResponse, VideoVariant
+  ChatSettings, ImageStatusResponse, VideoAspectRatio, VideoEngine, VideoGenerateRequest, VideoJobResponse,
+  VideoPreviewResponse, VideoQuality, VideoStatusResponse, VideoVariant
 } from '../types';
 
 const aspectOptions: Array<[VideoAspectRatio, string]> = [
@@ -51,6 +55,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [savedJobs, setSavedJobs] = useState<Array<{ job_id: string; sandbox_status: string }>>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [filmPreview, setFilmPreview] = useState<VideoPreviewResponse>();
+  const [previewing, setPreviewing] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
   const resultPanel = useRef<HTMLDivElement>(null);
 
@@ -63,7 +69,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       setStatus(result);
       setForm(previous => ({
         ...previous,
-        duration: Math.min(previous.duration, result.max_duration_seconds ?? 30),
+        duration: Math.min(previous.duration, videoMaxDuration(result, resolveVideoEngine(result, previous.engine))),
         aspect_ratio: result.allowed_aspect_ratios?.includes(previous.aspect_ratio)
           ? previous.aspect_ratio : result.allowed_aspect_ratios?.[0] ?? previous.aspect_ratio,
         quality: result.qualities?.includes(previous.quality)
@@ -166,6 +172,47 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setForm(previous => ({ ...previous, [key]: value }));
   };
 
+  // A preview shows one specific plan. Any change to the brief or settings
+  // makes it stale, so it is discarded rather than rendered by mistake.
+  useEffect(() => { setFilmPreview(undefined); }, [form, images]);
+
+  const engine = resolveVideoEngine(status, form.engine);
+  const maxDuration = videoMaxDuration(status, engine);
+  const hyperframesOffered = Boolean(status?.engines?.hyperframes);
+
+  function changeEngine(next: VideoEngine) {
+    setForm(previous => ({
+      ...previous,
+      engine: next,
+      duration: Math.min(previous.duration, videoMaxDuration(status, resolveVideoEngine(status, next)))
+    }));
+  }
+
+  function requestBody(): VideoGenerateRequest {
+    return {
+      ...form,
+      engine,
+      creative_mode: images.length || engine === 'hyperframes' ? 'auto' : form.creative_mode,
+      prompt: form.prompt.trim(),
+      images: videoImagePayload(images)
+    };
+  }
+
+  async function previewFilm() {
+    if (previewing || !ready || !form.prompt.trim() || engine !== 'hyperframes') return;
+    setPreviewing(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await client.previewVideo(requestBody());
+      setFilmPreview(result);
+    } catch (reason) {
+      setError(videoError(reason));
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
   function appendImages(next: VideoImageDraft[]) {
     const limit = Math.min(status?.max_images ?? MAX_VIDEO_IMAGES, MAX_VIDEO_IMAGES);
     if (images.length + next.length > limit) throw new Error(`Use up to ${limit} images per video.`);
@@ -257,8 +304,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setError('');
     setNotice('');
     try {
-      const next = await client.generateVideo({ ...form, creative_mode: images.length ? 'auto' : form.creative_mode,
-        prompt: form.prompt.trim(), images: videoImagePayload(images) });
+      // Rendering a previewed film sends its plan and seed, so the MP4 is the
+      // film that was watched rather than a fresh plan.
+      const body = filmPreview && engine === 'hyperframes'
+        ? { ...requestBody(), film_plan: filmPreview.plan, variation_seed: filmPreview.variation_seed }
+        : requestBody();
+      const next = await client.generateVideo(body);
       sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, next.job_id);
       setJob(next);
       setJobId(next.job_id);
@@ -372,13 +423,20 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
       <div className="video-lab-grid">
         <div className="panel video-form-panel">
-          <label>Video direction
+          {hyperframesOffered && <label>Engine
+            <select value={engine} onChange={event => changeEngine(event.target.value as VideoEngine)} disabled={Boolean(jobId)}>
+              <option value="hyperframes">Motion design · up to {formatDuration(videoMaxDuration(status, 'hyperframes'))}</option>
+              <option value="legacy">Classic renderer · up to {formatDuration(videoMaxDuration(status, 'legacy'))}</option>
+            </select>
+          </label>}
+          {engine === 'hyperframes' && <p className="field-help">AI writes a hook-first story; the motion, timing and transitions are designed in code. Preview it here before spending render time.</p>}
+          {engine === 'legacy' && <><label>Video direction
             <select value={form.creative_mode} onChange={event => update('creative_mode', event.target.value as 'auto' | 'template')}>
               <option value="auto" disabled={status?.auto_storyboard_enabled === false}>AI storyboard &amp; mockup</option>
               <option value="template" disabled={images.length > 0}>Simple template · text only</option>
             </select>
           </label>
-          <p className="field-help">AI plans the storyboard and directs each scene. Product photos become moving, image-led scenes.</p>
+          <p className="field-help">AI plans the storyboard and directs each scene. Product photos become moving, image-led scenes.</p></>}
           <label>
             Video brief
             <textarea rows={6} value={form.prompt} onChange={event => update('prompt', event.target.value)} />
@@ -431,8 +489,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
             {imageError && <div className="error-banner compact-error"><span>{imageError}</span></div>}
           </div>
           <div className="video-duration">
-            <label htmlFor="video-duration">Duration <strong>{form.duration} sec</strong></label>
-            <input id="video-duration" type="range" min={Math.max(6, images.length * 3)} max={Math.min(30, status?.max_duration_seconds ?? 30)}
+            <label htmlFor="video-duration">Duration <strong>{formatDuration(form.duration)}</strong></label>
+            <input id="video-duration" type="range" min={Math.max(6, images.length * 3)} max={maxDuration}
+              step={maxDuration > 30 ? 2 : 1}
               value={form.duration} onChange={event => update('duration', Number(event.target.value))} />
           </div>
           <div className="video-control-grid">
@@ -464,16 +523,38 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           <label className="video-sound"><input type="checkbox" checked={form.voice_over}
             onChange={event => update('voice_over', event.target.checked)} /> AI voice-over <small>Uses Gemini free-tier TTS quota; Malay or English narration</small></label>
           <p className="field-help">Standard quality uses more render compute.</p>
-          <button className="primary video-generate" type="button" onClick={() => void generate()}
-            disabled={!ready || !form.prompt.trim() || submitting || preparingImage || generatingImage || Boolean(jobId) || (images.length > 0 && status?.image_input_enabled !== true)}>
-            <VideoIcon /> {submitting ? form.creative_mode === 'auto' ? 'Planning storyboard…' : 'Starting render…' : 'Generate video'}
-          </button>
+          <div className="video-actions">
+            {engine === 'hyperframes' && <button className="secondary video-preview-button" type="button" onClick={() => void previewFilm()}
+              disabled={!ready || !form.prompt.trim() || previewing || submitting || preparingImage || generatingImage || Boolean(jobId)}>
+              <PlayIcon /> {previewing ? 'Planning…' : filmPreview ? 'New version' : 'Preview'}
+            </button>}
+            <button className="primary video-generate" type="button" onClick={() => void generate()}
+              disabled={!ready || !form.prompt.trim() || submitting || previewing || preparingImage || generatingImage || Boolean(jobId) || (images.length > 0 && status?.image_input_enabled !== true)}>
+              <VideoIcon /> {submitting
+                ? (filmPreview ? 'Starting render…' : form.creative_mode === 'auto' || engine === 'hyperframes' ? 'Planning film…' : 'Starting render…')
+                : filmPreview ? 'Render this version' : 'Generate video'}
+            </button>
+          </div>
           {jobId && <p className="field-help">Delete the current job before starting another render.</p>}
         </div>
 
         <div className="panel video-result-panel" ref={resultPanel}>
-          {!jobId && (
-            <div className="video-empty"><VideoIcon /><h2>No video yet</h2><p>Create a render job to preview it here.</p></div>
+          {!jobId && filmPreview && (
+            <div className="film-preview-panel">
+              <div className="video-result-head">
+                <div><span className="eyebrow">Preview · not rendered yet</span><h2>{filmPreview.plan.concept}</h2></div>
+              </div>
+              <FilmPreview html={filmPreview.html} width={filmPreview.width} height={filmPreview.height} />
+              <p className="field-help">{formatDuration(filmPreview.duration)} · {filmPreview.beats.length} beats · planned by {filmPreview.planner_model}. Fonts may differ slightly until rendered.{form.voice_over ? ' Voice-over is added in the render.' : ''}</p>
+              <ol className="film-beats">{filmPreview.beats.map((beat, index) => <li key={index}>
+                <small>{FILM_BLOCK_LABELS[beat.block]} · {beat.start.toFixed(1)}s</small>
+                <strong>{beat.headline}</strong>
+              </li>)}</ol>
+            </div>
+          )}
+          {!jobId && !filmPreview && (
+            <div className="video-empty"><VideoIcon /><h2>No video yet</h2>
+              <p>{engine === 'hyperframes' ? 'Preview a film here, then render the version you like.' : 'Create a render job to preview it here.'}</p></div>
           )}
           {jobId && (
             <div className="video-result">
@@ -489,7 +570,15 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               {job?.temporary && <p className="muted-copy" role="status">
                 Temporary render: download the video promptly. Vercel will discard its files when this Sandbox session ends.
               </p>}
-              {job?.status === 'completed' && !job.storyboard &&
+              {job?.film_plan && <section className="video-storyboard" aria-label="Film plan">
+                <div className="video-storyboard-heading"><b>Film plan</b><span>{job.planner_model}</span></div>
+                <p>{job.film_plan.concept}</p>
+                <ol>{job.film_plan.beats.map((beat, index) => <li key={index}>
+                  <small>{FILM_BLOCK_LABELS[beat.block]}</small>
+                  <strong>{beat.headline}</strong>{beat.support && <span>{beat.support}</span>}
+                </li>)}</ol>
+              </section>}
+              {job?.status === 'completed' && !job.storyboard && !job.film_plan &&
                 <p className="muted-copy">This job used the older template renderer. Delete it to create a new AI-directed product video.</p>}
               {job?.storyboard && <section className="video-storyboard" aria-label="AI storyboard">
                 <div className="video-storyboard-heading"><b>AI storyboard</b><span>{job.storyboard_model}</span></div>

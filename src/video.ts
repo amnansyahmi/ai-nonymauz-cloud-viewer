@@ -1,4 +1,4 @@
-import type { VideoGenerateRequest, VideoJobStatus } from './types';
+import type { FilmBlock, VideoEngine, VideoGenerateRequest, VideoJobStatus, VideoStatusResponse } from './types';
 
 export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
   prompt: 'Launch AI Nonymauz. Show a Malay question about building a .NET API, a concise answer with a code preview, then the AI Nonymauz name as the payoff. Use a clean product interface and a confident, modern pace.',
@@ -38,3 +38,40 @@ export function videoError(error: unknown): string {
   if (/HTTP 429/.test(message)) return 'Video quota or rate limit reached. Try again later.';
   return message.slice(0, 350);
 }
+
+export type ConcreteEngine = 'legacy' | 'hyperframes';
+
+/** The engine a request will actually use, given what the backend offers. */
+export function resolveVideoEngine(status: VideoStatusResponse | undefined, choice: VideoEngine | undefined): ConcreteEngine {
+  const offered = Boolean(status?.engines?.hyperframes);
+  if (choice === 'hyperframes' && offered) return 'hyperframes';
+  if (choice === 'legacy') return 'legacy';
+  return offered && status?.default_engine === 'hyperframes' ? 'hyperframes' : 'legacy';
+}
+
+/** Longest render the chosen engine accepts. Older backends report one cap (30 s). */
+export function videoMaxDuration(status: VideoStatusResponse | undefined, engine: ConcreteEngine): number {
+  const perEngine = status?.engines?.[engine]?.max_duration_seconds;
+  const overall = status?.max_duration_seconds ?? 30;
+  if (perEngine !== undefined) return Math.min(perEngine, overall);
+  return Math.min(overall, 30);
+}
+
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} sec`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${String(rest).padStart(2, '0')} min`;
+}
+
+export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
+  hook: 'Hook',
+  kinetic: 'Statement',
+  stat: 'Number',
+  list: 'List',
+  steps: 'Steps',
+  compare: 'Before / after',
+  quote: 'Quote',
+  image: 'Image',
+  cta: 'Close'
+};

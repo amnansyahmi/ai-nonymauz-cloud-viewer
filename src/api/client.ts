@@ -17,6 +17,7 @@ import type {
   ResponseMeta,
   VideoGenerateRequest,
   VideoJobResponse,
+  VideoPreviewResponse,
   VideoStatusResponse,
   VideoVariant
 } from '../types';
@@ -180,6 +181,15 @@ export class ApiClient {
   generateVideo(request: VideoGenerateRequest, signal?: AbortSignal): Promise<VideoJobResponse> {
     return this.json('/v1/video/generate', {
       method: 'POST', body: JSON.stringify(request), signal
+    });
+  }
+
+  /** Plan and compose a HyperFrames film without rendering (no Sandbox cost). */
+  previewVideo(request: VideoGenerateRequest, signal?: AbortSignal): Promise<VideoPreviewResponse> {
+    return this.json('/v1/video/preview', {
+      method: 'POST',
+      body: JSON.stringify(request),
+      signal
     });
   }
 
