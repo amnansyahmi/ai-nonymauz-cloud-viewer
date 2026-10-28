@@ -94,3 +94,18 @@ export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
   slider: 'Photo before / after',
   wordswap: 'Word flip'
 };
+
+/** Style directions. Each is a full look in the motion-design engine
+ * (backend motion_video/hyperframes/looks.py); keep keys in step. */
+export const VIDEO_STYLES: ReadonlyArray<{ value: string; label: string; description: string }> = [
+  { value: 'premium-dark', label: 'Premium dark', description: 'Deep night ground, slow aurora light, glass panels and orbiting line art.' },
+  { value: 'minimal', label: 'Minimal', description: 'Flat ground, hairline drawings, crop marks and quiet cuts. Type does the work.' },
+  { value: 'product-demo', label: 'Product demo', description: 'Clean app canvas: dot grid, floating UI windows, app-tile icons and a cursor.' },
+  { value: 'tech', label: 'Tech', description: 'A 3D wireframe and particle field, circuit traces and monospace type.' },
+  { value: 'cinematic', label: 'Cinematic', description: 'Warm film: vignette, light leaks, heavy grain, serif titles and slow dissolves.' },
+  { value: 'clean-light', label: 'Clean light', description: 'Bright paper, soft pastel shapes that morph and pop, rounded panels.' }
+];
+
+export function videoStyleDescription(style: string): string {
+  return VIDEO_STYLES.find(item => item.value === style)?.description ?? '';
+}
