@@ -129,3 +129,13 @@ describe('image roles and limits', () => {
     }
   });
 });
+
+describe('style directions', () => {
+  it('names every style with a description the backend look matches', async () => {
+    const { VIDEO_STYLES, videoStyleDescription } = await import('../video');
+    expect(VIDEO_STYLES.map(item => item.value)).toEqual(
+      ['premium-dark', 'minimal', 'product-demo', 'tech', 'cinematic', 'clean-light']);
+    expect(videoStyleDescription('tech')).toMatch(/3D/);
+    expect(videoStyleDescription('unknown')).toBe('');
+  });
+});

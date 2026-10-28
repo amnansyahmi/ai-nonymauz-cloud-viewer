@@ -4,7 +4,8 @@ import { FilmPreview } from '../components/FilmPreview';
 import { ImageIcon, PlayIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
 import {
   DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, IMAGE_ROLE_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS,
-  formatDuration, resolveVideoEngine, videoError, videoMaxDuration, videoMaxImages
+  formatDuration, resolveVideoEngine, videoError, videoMaxDuration, videoMaxImages,
+  VIDEO_STYLES, videoStyleDescription
 } from '../video';
 import {
   MAX_VIDEO_TOTAL_IMAGE_BYTES, prepareVideoImage, videoImagePayload
@@ -21,7 +22,6 @@ const aspectOptions: Array<[VideoAspectRatio, string]> = [
 const qualityOptions: Array<[VideoQuality, string]> = [
   ['preview', 'Preview · faster'], ['standard', 'Standard · higher resolution']
 ];
-const styles = ['premium-dark', 'minimal', 'product-demo', 'tech', 'cinematic', 'clean-light'];
 const activeStatuses = new Set(['queued', 'preparing', 'planning', 'building', 'checking', 'rendering']);
 
 function formatBytes(value?: number): string {
@@ -533,10 +533,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
             </label>
             <label>Style direction
               <select value={form.style} onChange={event => update('style', event.target.value)}>
-                {styles.map(value => <option value={value} key={value}>{value}</option>)}
+                {VIDEO_STYLES.map(item => <option value={item.value} key={item.value}>{item.label}</option>)}
               </select>
             </label>
           </div>
+          {engine === 'hyperframes' && videoStyleDescription(form.style) &&
+            <p className="field-help">{videoStyleDescription(form.style)}</p>}
           <label className="video-sound"><input type="checkbox" checked={form.sound_effects}
             onChange={event => update('sound_effects', event.target.checked)} /> {engine === 'hyperframes' ? 'Sound effects' : 'Soundtrack'} <small>{engine === 'hyperframes' ? 'Original cues matched to motion; quieter under narration' : 'Quiet score; cues only for visible actions'}</small></label>
           <label className="video-sound"><input type="checkbox" checked={form.voice_over}
