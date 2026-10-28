@@ -81,3 +81,37 @@ describe('network failures', () => {
       .rejects.toThrow('HTTP 500: Internal server error (reference abc123def456).');
   });
 });
+
+describe('image roles and limits', () => {
+  it('allows five images for motion design and three for the classic renderer', async () => {
+    const { videoMaxImages } = await import('../video');
+    const status = { enabled: true, max_images: 5, engines: {
+      legacy: { max_images: 3 }, hyperframes: { max_images: 5, image_roles: ['photo', 'screenshot', 'logo'] as const }
+    } } as unknown as VideoStatusResponse;
+    expect(videoMaxImages(status, 'hyperframes')).toBe(5);
+    expect(videoMaxImages(status, 'legacy')).toBe(3);
+    // A backend from before per-engine limits keeps the old cap.
+    expect(videoMaxImages({ enabled: true, max_images: 3 }, 'hyperframes')).toBe(3);
+  });
+
+  it('guesses screenshots and logos from name and shape, and sends the role', async () => {
+    const { guessImageRole, videoImagePayload } = await import('../videoImages');
+    expect(guessImageRole('Screenshot 2026-10-28.png', 'image/png', 1179, 2556)).toBe('screenshot');
+    expect(guessImageRole('IMG_0001.png', 'image/png', 1179, 2556)).toBe('screenshot');
+    expect(guessImageRole('chef-ammar-logo.png', 'image/png', 600, 600)).toBe('logo');
+    expect(guessImageRole('IMG_0002.jpg', 'image/jpeg', 3024, 4032)).toBe('photo');
+    const payload = videoImagePayload([
+      { id: 'a', name: 'a.png', data_url: 'data:image/png;base64,AA==', caption: '', fit: 'contain', sizeBytes: 1, role: 'screenshot' },
+      { id: 'b', name: 'b.png', data_url: 'data:image/png;base64,AA==', caption: '', fit: 'contain', sizeBytes: 1 }
+    ]);
+    expect(payload.map(image => image.role)).toEqual(['screenshot', 'photo']);
+    expect(payload[0]).not.toHaveProperty('id');
+  });
+
+  it('labels every film block', async () => {
+    const { FILM_BLOCK_LABELS } = await import('../video');
+    for (const block of ['device', 'chart', 'map', 'logo', 'price', 'slider', 'wordswap'] as const) {
+      expect(FILM_BLOCK_LABELS[block]).toBeTruthy();
+    }
+  });
+});

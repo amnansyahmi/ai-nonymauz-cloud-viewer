@@ -1,6 +1,7 @@
-import type { VideoImageInput } from './types';
+import type { VideoImageInput, VideoImageRole } from './types';
 
-export const MAX_VIDEO_IMAGES = 3;
+/** Upper bound for any engine; the backend reports each engine's own limit. */
+export const MAX_VIDEO_IMAGES = 5;
 export const MAX_VIDEO_IMAGE_BYTES = 768 * 1024;
 export const MAX_VIDEO_TOTAL_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
@@ -76,10 +77,23 @@ export async function prepareVideoImage(file: File): Promise<VideoImageDraft> {
     data_url: await toDataUrl(output),
     sizeBytes: output.size,
     caption: '',
-    fit: 'contain'
+    fit: 'contain',
+    role: guessImageRole(file.name, file.type, image.naturalWidth, image.naturalHeight)
   };
 }
 
+/**
+ * A starting guess the user can change: phone and desktop captures are PNGs
+ * at screen proportions or are named as screenshots; everything else is a photo.
+ */
+export function guessImageRole(name: string, type: string, width: number, height: number): VideoImageRole {
+  if (/screen ?shot|screen|capture|skrin/i.test(name)) return 'screenshot';
+  if (/logo/i.test(name)) return 'logo';
+  const ratio = height / Math.max(1, width);
+  if (type === 'image/png' && (ratio >= 1.9 || (ratio > 0.55 && ratio < 0.65))) return 'screenshot';
+  return 'photo';
+}
+
 export function videoImagePayload(images: VideoImageDraft[]): VideoImageInput[] {
-  return images.map(({ name, data_url, caption, fit }) => ({ name, data_url, caption, fit }));
+  return images.map(({ name, data_url, caption, fit, role }) => ({ name, data_url, caption, fit, role: role ?? 'photo' }));
 }
