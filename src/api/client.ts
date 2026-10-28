@@ -24,6 +24,16 @@ import type {
 export const DEFAULT_BACKEND =
   import.meta.env.VITE_BACKEND_URL || 'https://ai-nonymauz-cloud.onrender.com';
 
+// Mirrors the backend's MAX_RAG_CONTEXT_CHARS. /rag/search rejects larger
+// values with 422 and chat requests are clamped to it server-side, so the
+// Console never offers or sends more than the backend will honour.
+export const RAG_MAX_CONTEXT_CHARS = 16000;
+
+export function clampRagChars(value: number): number {
+  if (!Number.isFinite(value)) return RAG_MAX_CONTEXT_CHARS;
+  return Math.min(Math.max(Math.round(value), 0), RAG_MAX_CONTEXT_CHARS);
+}
+
 export function normalizeBackendUrl(value: string): string {
   return (value || DEFAULT_BACKEND).trim().replace(/\/+$/, '');
 }
@@ -64,7 +74,7 @@ export function buildChatRequestBody(settings: ChatSettings, messages: ChatMessa
     use_tools: settings.useTools,
     city: settings.city,
     rag_top_k: settings.ragTopK,
-    rag_max_context_chars: settings.ragMaxChars
+    rag_max_context_chars: clampRagChars(settings.ragMaxChars)
   };
 
   // Leaving max_tokens out is intentional. The backend can then use its mode
@@ -151,7 +161,7 @@ export class ApiClient {
     const params = new URLSearchParams({
       q: query,
       top_k: String(topK),
-      max_chars: String(maxChars)
+      max_chars: String(clampRagChars(maxChars))
     });
     return this.json(`/rag/search?${params.toString()}`);
   }

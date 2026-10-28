@@ -1,4 +1,4 @@
-import { DEFAULT_BACKEND } from './api/client';
+import { DEFAULT_BACKEND, clampRagChars } from './api/client';
 import type { ChatSettings } from './types';
 
 const SETTINGS_KEY = 'ai-nonymauz-console.settings.v3';
@@ -44,6 +44,10 @@ export function loadSettings(): ChatSettings {
     // opt-in flag as OFF so the backend's dynamic token budget becomes the
     // default immediately after this upgrade.
     useCustomMaxTokens: saved.useCustomMaxTokens === true,
+    // Older Console builds allowed up to 30,000; the backend caps at 16,000.
+    ragMaxChars: clampRagChars(
+      typeof saved.ragMaxChars === 'number' ? saved.ragMaxChars : defaults.ragMaxChars
+    ),
     apiKey: rememberedKey || sessionKey || legacyKey
   };
 }
