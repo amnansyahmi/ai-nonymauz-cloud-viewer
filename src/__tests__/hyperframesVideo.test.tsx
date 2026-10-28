@@ -56,3 +56,28 @@ describe('HyperFrames engine in Video Lab', () => {
     expect(html).toContain('Loading preview');
   });
 });
+
+describe('network failures', () => {
+  it('replaces Safari and Chrome bare fetch errors with a readable message', async () => {
+    for (const raw of ['Load failed', 'Failed to fetch']) {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError(raw)));
+      await expect(new ApiClient('https://example.test', 'k').videoStatus())
+        .rejects.toThrow(/No response from the backend/);
+    }
+  });
+
+  it('keeps aborts and other errors unchanged', async () => {
+    const abort = new DOMException('aborted', 'AbortError');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
+    await expect(new ApiClient('https://example.test', 'k').videoStatus()).rejects.toBe(abort);
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Invalid URL')));
+    await expect(new ApiClient('https://example.test', 'k').videoStatus()).rejects.toThrow('Invalid URL');
+  });
+
+  it('shows the backend error reference from a JSON 500', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(
+      { detail: 'Internal server error (reference abc123def456).', reference: 'abc123def456' }, { status: 500 })));
+    await expect(new ApiClient('https://example.test', 'k').videoStatus())
+      .rejects.toThrow('HTTP 500: Internal server error (reference abc123def456).');
+  });
+});
