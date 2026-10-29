@@ -539,7 +539,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 <input value={form.title ?? ''} maxLength={72} onChange={event => update('title', event.target.value)} placeholder="e.g. Our new collection" />
               </label>
               <div className="video-image-list">{images.map((image, index) => <div className="video-image-row" key={image.id}>
-                <img src={image.poster ?? image.data_url} alt={`Scene ${index + 1}: ${image.name}`} />
+                <img src={image.poster ?? image.data_url} style={{ objectPosition: `${(image.focal_x ?? .5) * 100}% ${(image.focal_y ?? .5) * 100}%` }} alt={`Scene ${index + 1}: ${image.name}`} />
                 <div className="video-image-fields">
                   <div className="video-image-row-head"><b>{image.kind === 'video' ? `Recording ${index + 1} · ${image.seconds ?? ''}s` : `Image ${index + 1}`}</b><span>{formatBytes(image.sizeBytes)}</span></div>
                   <label>Caption <input maxLength={80} value={image.caption} placeholder="Optional"
@@ -551,6 +551,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                   {image.kind !== 'video' && <label>Framing <select value={image.fit} onChange={event => editImage(image.id, { fit: event.target.value as 'contain' | 'cover' })}>
                     <option value="contain">Fit full image</option><option value="cover">Fill frame / crop</option>
                   </select></label>}
+                  {image.kind !== 'video' && image.fit === 'cover' && <fieldset className="video-focal"><legend>Keep subject in frame</legend>
+                    <label>Horizontal position <input type="range" min="0" max="100" value={Math.round((image.focal_x ?? .5) * 100)}
+                      onChange={event => editImage(image.id, { focal_x: Number(event.target.value) / 100 })} /></label>
+                    <label>Vertical position <input type="range" min="0" max="100" value={Math.round((image.focal_y ?? .5) * 100)}
+                      onChange={event => editImage(image.id, { focal_y: Number(event.target.value) / 100 })} /></label>
+                  </fieldset>}
                   <div className="video-image-actions">
                     {image.kind !== 'video' && <button type="button" className="secondary" disabled={Boolean(jobId) || Boolean(cuttingImage)}
                       onClick={() => void makeDepthCutout(image)}>
@@ -644,7 +650,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               <ol className="film-beats">{filmPreview.beats.map((beat, index) => <li key={index}>
                 <small>{FILM_BLOCK_LABELS[beat.block]} · {beat.start.toFixed(1)}s</small>
                 <strong>{beat.headline}</strong>
+                {beat.narrative_role && <span>{beat.narrative_role}</span>}
+                {beat.visual_action && <p>{beat.visual_action}</p>}
               </li>)}</ol>
+              {Boolean(filmPreview.editorial_notes?.length) && <details className="film-editorial"><summary>Story suggestions</summary>
+                <ul>{filmPreview.editorial_notes?.map(note => <li key={note}>{note}</li>)}</ul>
+              </details>}
             </div>
           )}
           {!jobId && !filmPreview && (
@@ -661,6 +672,11 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               </div>
               <div className="video-progress-label"><span>{job?.stage || (job ? VIDEO_STAGE_LABELS[job.status] : 'Checking status')}</span><b>{progress}%</b></div>
               <progress className="video-progress" value={progress} max={100} aria-label="Render progress" />
+              {job?.quality_report && <details className="film-editorial"><summary>Render checks</summary>
+                <p>{job.quality_report.samples} scene samples inspected. {job.quality_report.output?.ok ? 'MP4 duration and shape verified.' : ''}</p>
+                {job.quality_report.warnings.length > 0 ? <ul>{job.quality_report.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>
+                  : <p>No issues found in the sampled frames.</p>}
+              </details>}
               <p className="video-job-id">Job ID <code>{jobId}</code></p>
               {job?.temporary && <p className="muted-copy" role="status">
                 Temporary render: download the video promptly. Vercel will discard its files when this Sandbox session ends.

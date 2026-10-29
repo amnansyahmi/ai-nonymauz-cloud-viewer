@@ -172,10 +172,10 @@ export function mediaKey(image: VideoImageDraft, index: number): string {
 
 export function videoImagePayload(images: VideoImageDraft[], byReference = false): VideoImageInput[] {
   if (!byReference) {
-    return images.map(({ name, data_url, caption, fit, role }) => ({ name, data_url, caption, fit, role: role ?? 'photo' }));
+    return images.map(({ name, data_url, caption, fit, role, focal_x, focal_y }) => ({ name, data_url, caption, fit, focal_x, focal_y, role: role ?? 'photo' }));
   }
   return images.map(image => ({
-    name: image.name, caption: image.caption, fit: image.fit, role: image.role ?? 'photo',
+    name: image.name, caption: image.caption, fit: image.fit, focal_x: image.focal_x, focal_y: image.focal_y, role: image.role ?? 'photo',
     kind: image.kind ?? 'image', mime: image.mime ?? mimeOf(image.data_url),
     width: image.width, height: image.height, size_bytes: image.sizeBytes,
     ...(image.kind === 'video' ? { seconds: image.seconds } : {})

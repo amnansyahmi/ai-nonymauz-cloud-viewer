@@ -87,6 +87,7 @@ export const IMAGE_ROLE_LABELS: Record<VideoImageRole, string> = {
 };
 
 export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
+  tableau: 'Visual story',
   hook: 'Hook',
   kinetic: 'Statement',
   stat: 'Number',
