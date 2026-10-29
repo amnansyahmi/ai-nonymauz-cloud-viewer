@@ -221,7 +221,20 @@ export interface VideoStatusResponse {
 }
 
 export type FilmBlock = 'hook' | 'kinetic' | 'stat' | 'list' | 'steps' | 'compare' | 'quote' | 'image' | 'cta'
-  | 'device' | 'chart' | 'map' | 'logo' | 'price' | 'slider' | 'wordswap';
+  | 'device' | 'chart' | 'map' | 'logo' | 'price' | 'slider' | 'wordswap'
+  | 'flow' | 'fan' | 'chaos' | 'tags' | 'ui';
+
+export type BrandFont = 'inter' | 'grotesk' | 'editorial' | 'condensed' | 'mono'
+  | 'montserrat' | 'poppins' | 'outfit' | 'nunito' | 'oswald';
+
+/** A client's look sent with a render: colours and display face. */
+export interface BrandKit {
+  name: string;
+  primary?: string;
+  secondary?: string;
+  ground?: string;
+  font?: BrandFont;
+}
 
 export interface FilmBeat {
   block: FilmBlock;
@@ -288,6 +301,9 @@ export interface VideoGenerateRequest {
   variation_seed?: number;
   /** A plan from /v1/video/preview: renders exactly the previewed film. */
   film_plan?: FilmPlan;
+  /** Original generated music under the film (motion-design engine). */
+  music?: boolean;
+  brand?: BrandKit;
 }
 
 export interface VideoStoryboardScene {
