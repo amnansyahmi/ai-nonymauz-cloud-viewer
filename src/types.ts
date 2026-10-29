@@ -188,7 +188,7 @@ export interface ImageGenerateResponse {
 
 export type VideoAspectRatio = '9:16' | '16:9' | '1:1';
 export type VideoQuality = 'preview' | 'standard';
-export type VideoJobStatus = 'queued' | 'preparing' | 'planning' | 'building' | 'checking' | 'rendering' | 'completed' | 'failed';
+export type VideoJobStatus = 'awaiting_media' | 'queued' | 'preparing' | 'planning' | 'building' | 'checking' | 'rendering' | 'completed' | 'failed';
 export type VideoVariant = 'compressed' | 'master';
 export type VideoEngine = 'auto' | 'legacy' | 'hyperframes';
 
@@ -216,6 +216,9 @@ export interface VideoStatusResponse {
     max_images?: number;
     image_roles?: VideoImageRole[];
     blocks?: FilmBlock[];
+    music?: boolean;
+    brand_kit?: boolean;
+    media_upload?: VideoMediaUpload;
   }>>;
   default_engine?: Exclude<VideoEngine, 'auto'>;
 }
@@ -278,11 +281,36 @@ export type VideoImageRole = 'photo' | 'screenshot' | 'logo';
 
 export interface VideoImageInput {
   name: string;
-  data_url: string;
+  /** Inline bytes; omitted when the media is sent by reference and uploaded. */
+  data_url?: string;
   caption: string;
   fit: 'contain' | 'cover';
   /** How the motion-design engine uses the image. Older backends ignore it. */
   role?: VideoImageRole;
+  /** By reference: what the backend needs without the bytes. */
+  kind?: 'image' | 'video';
+  mime?: string;
+  width?: number;
+  height?: number;
+  size_bytes?: number;
+  seconds?: number;
+}
+
+export interface VideoMediaUpload {
+  max_media: number;
+  max_videos: number;
+  chunk_bytes: number;
+  max_clip_bytes: number;
+  max_clip_seconds: number;
+  clip_types: string[];
+}
+
+export interface VideoExpectedMedia {
+  key: string;
+  mime: string;
+  size: number;
+  parts: number;
+  kind: 'image' | 'video';
 }
 
 export interface VideoGenerateRequest {
@@ -341,6 +369,8 @@ export interface VideoJobResponse {
   storyboard_model?: string | null;
   storyboard_reference_mode?: 'vision' | 'brief_and_captions' | null;
   engine?: Exclude<VideoEngine, 'auto'>;
+  /** Present while the job waits for its uploads. */
+  media?: VideoExpectedMedia[];
   film_plan?: FilmPlan | null;
   planner_model?: string | null;
   variation_seed?: number;

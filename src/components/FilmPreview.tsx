@@ -4,6 +4,15 @@ interface FilmPreviewProps {
   html: string;
   width: number;
   height: number;
+  /** Media sent by reference, by key: filled in here, never re-uploaded. */
+  media?: Record<string, string>;
+}
+
+/** Put the local media map in front of the composition's own fill script. */
+export function withMedia(html: string, media?: Record<string, string>): string {
+  if (!media || !Object.keys(media).length) return html;
+  const script = `<script>window.__hfMedia=${JSON.stringify(media).replace(/</g, '\\u003c')};</script>`;
+  return html.includes('<head>') ? html.replace('<head>', `<head>${script}`) : script + html;
 }
 
 type PlayerState = 'loading' | 'ready' | 'error';
@@ -16,7 +25,7 @@ type PlayerState = 'loading' | 'ready' | 'error';
  * attribute API, which avoids JSX typing workarounds. `sandbox-origin="opaque"`
  * keeps composition scripts from reaching this page's DOM or storage.
  */
-export function FilmPreview({ html, width, height }: FilmPreviewProps) {
+export function FilmPreview({ html, width, height, media }: FilmPreviewProps) {
   const host = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<PlayerState>('loading');
   const [message, setMessage] = useState('');
@@ -45,7 +54,7 @@ export function FilmPreview({ html, width, height }: FilmPreviewProps) {
         player.setAttribute('sandbox-origin', 'opaque');
         player.setAttribute('width', String(width));
         player.setAttribute('height', String(height));
-        player.setAttribute('srcdoc', html);
+        player.setAttribute('srcdoc', withMedia(html, media));
         player.addEventListener('ready', onReady);
         player.addEventListener('error', onError);
         container.replaceChildren(player);
@@ -63,7 +72,7 @@ export function FilmPreview({ html, width, height }: FilmPreviewProps) {
       player?.removeEventListener('error', onError);
       container.replaceChildren();
     };
-  }, [html, width, height]);
+  }, [html, width, height, media]);
 
   return (
     <div className="film-preview" data-orientation={height > width ? 'portrait' : width > height ? 'landscape' : 'square'}>
