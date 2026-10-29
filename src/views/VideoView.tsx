@@ -6,11 +6,11 @@ import { brandPayload, type SavedBrandKit } from '../brandKits';
 import { ImageIcon, PlayIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
 import {
   DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, IMAGE_ROLE_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS,
-  formatDuration, resolveVideoEngine, videoError, videoMaxDuration, videoMaxImages,
+  formatDuration, resolveVideoEngine, videoError, videoMaxDuration, videoMaxImages, videoUsesUploads,
   VIDEO_STYLES, videoStyleDescription
 } from '../video';
 import {
-  MAX_VIDEO_TOTAL_IMAGE_BYTES, prepareVideoImage, videoImagePayload
+  MAX_VIDEO_TOTAL_IMAGE_BYTES, isClipFile, mediaBlob, mediaKey, prepareVideoClip, prepareVideoImage, previewMedia, videoImagePayload
 } from '../videoImages';
 import type { VideoImageDraft } from '../videoImages';
 import type {
@@ -189,6 +189,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const maxDuration = videoMaxDuration(status, engine);
   const hyperframesOffered = Boolean(status?.engines?.hyperframes);
   const maxImages = videoMaxImages(status, engine);
+  // Motion-design films send media by reference and upload it to the job.
+  const byReference = videoUsesUploads(status, engine);
+  const perScene = byReference ? 2 : 3;
+  const maxClips = status?.engines?.hyperframes?.media_upload?.max_videos ?? 0;
+  // Stable per image list, so the preview player is not rebuilt on every render.
+  const localMedia = useMemo(() => byReference ? previewMedia(images) : undefined, [byReference, images]);
   const tooManyImages = images.length > maxImages;
   // Roles only change anything in the motion-design engine.
   const roleChoices: VideoImageRole[] | null = engine === 'hyperframes'
@@ -208,7 +214,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       engine,
       creative_mode: images.length || engine === 'hyperframes' ? 'auto' : form.creative_mode,
       prompt: form.prompt.trim(),
-      images: videoImagePayload(images),
+      images: videoImagePayload(images, byReference),
       music: engine === 'hyperframes' && Boolean(form.music),
       brand: engine === 'hyperframes' ? brandPayload(brandKit) : undefined
     };
@@ -236,11 +242,14 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     const limit = maxImages;
     if (images.length + next.length > limit) throw new Error(`Use up to ${limit} images per video.`);
     const total = [...images, ...next].reduce((sum, item) => sum + item.sizeBytes, 0);
-    if (total > (status?.max_total_image_bytes ?? MAX_VIDEO_TOTAL_IMAGE_BYTES)) {
+    if (!byReference && total > (status?.max_total_image_bytes ?? MAX_VIDEO_TOTAL_IMAGE_BYTES)) {
       throw new Error('The prepared images exceed the 2 MB total. Use smaller images.');
     }
+    if ([...images, ...next].filter(item => item.kind === 'video').length > maxClips) {
+      throw new Error(maxClips ? `Use up to ${maxClips} screen recordings per video.` : 'Screen recordings need the motion-design engine.');
+    }
     setImages([...images, ...next]);
-    setForm(previous => ({ ...previous, creative_mode: 'auto', duration: Math.max(previous.duration, (images.length + next.length) * 3) }));
+    setForm(previous => ({ ...previous, creative_mode: 'auto', duration: Math.max(previous.duration, (images.length + next.length) * perScene) }));
   }
 
   async function addFiles(files: FileList | null) {
@@ -249,7 +258,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setPreparingImage(true);
     try {
       const next: VideoImageDraft[] = [];
-      for (const file of Array.from(files)) next.push(await prepareVideoImage(file));
+      for (const file of Array.from(files)) {
+        next.push(byReference && isClipFile(file) ? await prepareVideoClip(file) : await prepareVideoImage(file));
+      }
       appendImages(next);
     } catch (reason) {
       setImageError(videoError(reason));
@@ -306,7 +317,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       // The quantized model runs on the device. The first use downloads its
       // weights; no image generation quota or Sandbox time is consumed.
       const { removeBackground } = await import('@imgly/background-removal');
-      const source = await (await fetch(image.data_url)).blob();
+      const source = await (await fetch(image.data_url ?? '')).blob();
       const cutout = await removeBackground(source, { model: 'isnet_quint8', device: 'cpu' });
       const prepared = await prepareVideoImage(new File([cutout], image.name.replace(/\.[^.]+$/, '') + '-cutout.png', { type: 'image/png' }));
       setImages(previous => previous.map(item => item.id === image.id
@@ -328,8 +339,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
   async function generate() {
     if (submitting || preparingImage || generatingImage || cuttingImage || jobId || !form.prompt.trim() || status?.enabled !== true || status.auth_ready === false || (status.auth_required && !settings.apiKey.trim())) return;
-    if (images.length && (status.image_input_enabled !== true || form.duration < images.length * 3)) {
-      setImageError('Image scenes require an updated backend and at least 3 seconds per image.');
+    if (images.length && (status.image_input_enabled !== true || form.duration < images.length * perScene)) {
+      setImageError(`Image scenes require an updated backend and at least ${perScene} seconds per image.`);
       return;
     }
     setSubmitting(true);
@@ -341,7 +352,28 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       const body = filmPreview && engine === 'hyperframes'
         ? { ...requestBody(), film_plan: filmPreview.plan, variation_seed: filmPreview.variation_seed }
         : requestBody();
-      const next = await client.generateVideo(body);
+      let next = await client.generateVideo(body);
+      if (next.status === 'awaiting_media' && next.media?.length) {
+        // Each file goes up in chunks under the 4.5 MB request limit, then
+        // the render starts. Keys follow the order of the images sent.
+        const chunk = status?.engines?.hyperframes?.media_upload?.chunk_bytes ?? 3 * 1024 * 1024;
+        const byKey = new Map(images.map((image, index) => [mediaKey(image, index), image]));
+        const totalParts = next.media.reduce((sum, item) => sum + item.parts, 0);
+        let sent = 0;
+        for (const item of next.media) {
+          const image = byKey.get(item.key);
+          if (!image) throw new Error(`The render expects ${item.key}, which is no longer attached.`);
+          const blob = await mediaBlob(image);
+          for (let part = 0; part < item.parts; part++) {
+            setNotice(`Uploading media ${Math.min(totalParts, sent + 1)} of ${totalParts}…`);
+            await client.uploadVideoMedia(next.job_id, item.key, part, blob.slice(part * chunk, (part + 1) * chunk));
+            sent += 1;
+          }
+        }
+        setNotice('Media uploaded. Starting the render…');
+        next = await client.startVideoJob(next.job_id);
+        setNotice('');
+      }
       sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, next.job_id);
       setJob(next);
       setJobId(next.job_id);
@@ -479,7 +511,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 disabled={preparingImage || generatingImage || images.length >= maxImages || Boolean(jobId) || status?.image_input_enabled === false}>
                 <ImageIcon /> {preparingImage ? 'Preparing…' : 'Add images'}
               </button>
-              <input ref={imageInput} hidden type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              <input ref={imageInput} hidden type="file" multiple accept={`image/jpeg,image/png,image/webp,image/heic,image/heif${maxClips ? ',video/mp4,video/quicktime,video/webm,.mov,.mp4,.webm' : ''}`}
                 onChange={event => void addFiles(event.target.files)} />
             </div>
             {status?.image_input_enabled === false && <p className="field-help">Image scenes require the updated backend.</p>}
@@ -488,23 +520,23 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 <input value={form.title ?? ''} maxLength={72} onChange={event => update('title', event.target.value)} placeholder="e.g. Our new collection" />
               </label>
               <div className="video-image-list">{images.map((image, index) => <div className="video-image-row" key={image.id}>
-                <img src={image.data_url} alt={`Scene ${index + 1}: ${image.name}`} />
+                <img src={image.poster ?? image.data_url} alt={`Scene ${index + 1}: ${image.name}`} />
                 <div className="video-image-fields">
-                  <div className="video-image-row-head"><b>Image {index + 1}</b><span>{formatBytes(image.sizeBytes)}</span></div>
+                  <div className="video-image-row-head"><b>{image.kind === 'video' ? `Recording ${index + 1} · ${image.seconds ?? ''}s` : `Image ${index + 1}`}</b><span>{formatBytes(image.sizeBytes)}</span></div>
                   <label>Caption <input maxLength={80} value={image.caption} placeholder="Optional"
                     onChange={event => editImage(image.id, { caption: event.target.value })} /></label>
                   {roleChoices && <label>Use as <select value={image.role ?? 'photo'}
                     onChange={event => editImage(image.id, { role: event.target.value as VideoImageRole })}>
                     {roleChoices.map(role => <option value={role} key={role}>{IMAGE_ROLE_LABELS[role]}</option>)}
                   </select></label>}
-                  <label>Framing <select value={image.fit} onChange={event => editImage(image.id, { fit: event.target.value as 'contain' | 'cover' })}>
+                  {image.kind !== 'video' && <label>Framing <select value={image.fit} onChange={event => editImage(image.id, { fit: event.target.value as 'contain' | 'cover' })}>
                     <option value="contain">Fit full image</option><option value="cover">Fill frame / crop</option>
-                  </select></label>
+                  </select></label>}
                   <div className="video-image-actions">
-                    <button type="button" className="secondary" disabled={Boolean(jobId) || Boolean(cuttingImage)}
+                    {image.kind !== 'video' && <button type="button" className="secondary" disabled={Boolean(jobId) || Boolean(cuttingImage)}
                       onClick={() => void makeDepthCutout(image)}>
                       {cuttingImage === image.id ? 'Removing background…' : 'Make depth cutout'}
-                    </button>
+                    </button>}
                     <button type="button" className="secondary" aria-label={`Move scene ${index + 1} earlier`} disabled={index === 0 || Boolean(jobId)} onClick={() => moveImage(index, -1)}>↑</button>
                     <button type="button" className="secondary" aria-label={`Move scene ${index + 1} later`} disabled={index === images.length - 1 || Boolean(jobId)} onClick={() => moveImage(index, 1)}>↓</button>
                     <button type="button" className="secondary" disabled={Boolean(jobId)} onClick={() => setImages(previous => previous.filter(item => item.id !== image.id))}>Remove</button>
@@ -527,7 +559,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           </div>
           <div className="video-duration">
             <label htmlFor="video-duration">Duration <strong>{formatDuration(form.duration)}</strong></label>
-            <input id="video-duration" type="range" min={Math.max(6, images.length * 3)} max={maxDuration}
+            <input id="video-duration" type="range" min={Math.max(6, images.length * perScene)} max={maxDuration}
               step={maxDuration > 30 ? 2 : 1}
               value={form.duration} onChange={event => update('duration', Number(event.target.value))} />
           </div>
@@ -587,7 +619,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               <div className="video-result-head">
                 <div><span className="eyebrow">Preview · not rendered yet</span><h2>{filmPreview.plan.concept}</h2></div>
               </div>
-              <FilmPreview html={filmPreview.html} width={filmPreview.width} height={filmPreview.height} />
+              <FilmPreview html={filmPreview.html} width={filmPreview.width} height={filmPreview.height}
+                media={localMedia} />
               <p className="field-help">{formatDuration(filmPreview.duration)} · {filmPreview.beats.length} beats · planned by {filmPreview.planner_model}. Fonts may differ slightly until rendered.{[form.music ? 'Music' : '', form.voice_over ? 'Voice-over' : ''].filter(Boolean).join(' and ') ? ` ${[form.music ? 'Music' : '', form.voice_over ? 'voice-over' : ''].filter(Boolean).join(' and ')} ${form.music && form.voice_over ? 'are' : 'is'} added in the render.` : ''}</p>
               <ol className="film-beats">{filmPreview.beats.map((beat, index) => <li key={index}>
                 <small>{FILM_BLOCK_LABELS[beat.block]} · {beat.start.toFixed(1)}s</small>

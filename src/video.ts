@@ -18,6 +18,7 @@ export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
 export const VIDEO_JOB_STORAGE_KEY = 'ai-nonymauz-video-job';
 
 export const VIDEO_STAGE_LABELS: Record<VideoJobStatus, string> = {
+  awaiting_media: 'Uploading media',
   queued: 'Preparing render',
   preparing: 'Preparing Sandbox',
   planning: 'Planning direction',
@@ -67,8 +68,16 @@ export function formatDuration(seconds: number): string {
 
 /** Images the chosen engine accepts. Older backends report one limit (3). */
 export function videoMaxImages(status: VideoStatusResponse | undefined, engine: ConcreteEngine): number {
+  // Uploaded separately, motion-design films take more media than one request carries.
+  const uploads = engine === 'hyperframes' ? status?.engines?.hyperframes?.media_upload : undefined;
+  if (uploads) return Math.min(uploads.max_media, 12);
   const perEngine = status?.engines?.[engine]?.max_images;
   return Math.min(perEngine ?? Math.min(status?.max_images ?? 3, 3), 5);
+}
+
+/** Whether this film's media goes by reference and is uploaded to the job. */
+export function videoUsesUploads(status: VideoStatusResponse | undefined, engine: ConcreteEngine): boolean {
+  return engine === 'hyperframes' && Boolean(status?.engines?.hyperframes?.media_upload);
 }
 
 export const IMAGE_ROLE_LABELS: Record<VideoImageRole, string> = {

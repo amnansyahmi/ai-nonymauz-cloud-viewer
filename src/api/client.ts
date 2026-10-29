@@ -212,6 +212,17 @@ export class ApiClient {
     });
   }
 
+  /** One chunk (raw bytes) of an image or recording the job is waiting for. */
+  async uploadVideoMedia(jobId: string, key: string, part: number, chunk: Blob, signal?: AbortSignal): Promise<void> {
+    await this.checkedFetch(`/v1/video/jobs/${encodeURIComponent(jobId)}/media/${encodeURIComponent(key)}?part=${part}`, {
+      method: 'PUT', body: chunk, signal, headers: { 'Content-Type': 'application/octet-stream' }
+    });
+  }
+
+  startVideoJob(jobId: string, signal?: AbortSignal): Promise<VideoJobResponse> {
+    return this.json(`/v1/video/jobs/${encodeURIComponent(jobId)}/start`, { method: 'POST', signal });
+  }
+
   videoJob(jobId: string, signal?: AbortSignal): Promise<VideoJobResponse> {
     return this.json(`/v1/video/jobs/${encodeURIComponent(jobId)}`, { signal });
   }
