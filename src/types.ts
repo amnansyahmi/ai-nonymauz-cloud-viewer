@@ -274,7 +274,17 @@ export interface VideoPreviewResponse {
   duration: number;
   transitions: string[];
   beats: Array<{ block: FilmBlock; start: number; end: number; headline: string }>;
+  /** Background music to synthesise for the player (POST /v1/video/music). */
+  music?: VideoMusicSpec | null;
   note?: string;
+}
+
+export interface VideoMusicSpec {
+  duration: number;
+  bpm: number;
+  energy: 'calm' | 'balanced' | 'energetic';
+  seed: number;
+  ducks: Array<[number, number]>;
 }
 
 export type VideoImageRole = 'photo' | 'screenshot' | 'logo';

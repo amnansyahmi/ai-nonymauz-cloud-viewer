@@ -21,7 +21,7 @@ const CLIP_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
 export const MAX_CLIP_BYTES = 20 * 1024 * 1024;
 export const MAX_CLIP_SECONDS = 30;
 
-function toDataUrl(blob: Blob): Promise<string> {
+export function toDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
