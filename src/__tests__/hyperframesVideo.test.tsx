@@ -49,6 +49,20 @@ describe('HyperFrames engine in Video Lab', () => {
     expect(JSON.parse(init.body).engine).toBe('hyperframes');
   });
 
+  it('fetches preview music as WAV from /v1/video/music', async () => {
+    const wav = new Blob([new Uint8Array([82, 73, 70, 70])], { type: 'audio/wav' });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(wav, { headers: { 'Content-Type': 'audio/wav' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const spec = { duration: 15, bpm: 108, energy: 'balanced' as const, seed: 4, ducks: [] };
+    const blob = await new ApiClient('https://example.test', 'secret').previewMusic(spec);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://example.test/v1/video/music');
+    expect(init.method).toBe('POST');
+    expect(init.headers.get('Authorization')).toBe('Bearer secret');
+    expect(JSON.parse(init.body)).toEqual(spec);
+    expect(blob.size).toBe(4);
+  });
+
   it('forwards preview cancellation so edited briefs can abandon planning', async () => {
     const controller = new AbortController();
     const fetchMock = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {

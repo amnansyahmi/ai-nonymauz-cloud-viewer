@@ -17,6 +17,7 @@ import type {
   ResponseMeta,
   VideoGenerateRequest,
   VideoJobResponse,
+  VideoMusicSpec,
   VideoPreviewResponse,
   VideoStatusResponse,
   VideoVariant
@@ -210,6 +211,14 @@ export class ApiClient {
       body: JSON.stringify(request),
       signal
     });
+  }
+
+  /** The preview's original background music, as WAV audio. */
+  async previewMusic(spec: VideoMusicSpec, signal?: AbortSignal): Promise<Blob> {
+    const response = await this.checkedFetch('/v1/video/music', {
+      method: 'POST', body: JSON.stringify(spec), signal
+    });
+    return response.blob();
   }
 
   /** One chunk (raw bytes) of an image or recording the job is waiting for. */

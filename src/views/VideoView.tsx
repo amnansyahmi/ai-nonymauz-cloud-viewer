@@ -10,7 +10,8 @@ import {
   VIDEO_STYLES, videoStyleDescription
 } from '../video';
 import {
-  MAX_VIDEO_TOTAL_IMAGE_BYTES, isClipFile, mediaBlob, mediaKey, prepareVideoClip, prepareVideoImage, previewMedia, videoImagePayload
+  MAX_VIDEO_TOTAL_IMAGE_BYTES, isClipFile, mediaBlob, mediaKey, prepareVideoClip, prepareVideoImage, previewMedia, toDataUrl,
+  videoImagePayload
 } from '../videoImages';
 import type { VideoImageDraft } from '../videoImages';
 import type {
@@ -59,6 +60,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [filmPreview, setFilmPreview] = useState<VideoPreviewResponse>();
+  const [previewMusic, setPreviewMusic] = useState<string>();
   const [previewing, setPreviewing] = useState(false);
   const previewController = useRef<AbortController | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -182,6 +184,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     previewController.current?.abort();
     setPreviewing(false);
     setFilmPreview(undefined);
+    setPreviewMusic(undefined);
     return () => { previewController.current?.abort(); };
   }, [form, images, brandKit, client, status?.default_engine]);
 
@@ -195,6 +198,8 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const maxClips = status?.engines?.hyperframes?.media_upload?.max_videos ?? 0;
   // Stable per image list, so the preview player is not rebuilt on every render.
   const localMedia = useMemo(() => byReference ? previewMedia(images) : undefined, [byReference, images]);
+  const playerMedia = useMemo(() => previewMusic ? { ...(localMedia ?? {}), music: previewMusic } : localMedia,
+    [localMedia, previewMusic]);
   const tooManyImages = images.length > maxImages;
   // Roles only change anything in the motion-design engine.
   const roleChoices: VideoImageRole[] | null = engine === 'hyperframes'
@@ -230,7 +235,21 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setNotice('');
     try {
       const result = await client.previewVideo(requestBody(), controller.signal);
-      if (!controller.signal.aborted) setFilmPreview(result);
+      // Music is fetched before the player loads, so it is built once. The
+      // player runs on an opaque origin, which can read data: URLs but not
+      // this page's blob: URLs. Without it the preview simply has no music.
+      let music: string | undefined;
+      if (result.music) {
+        try {
+          music = await toDataUrl(await client.previewMusic(result.music, controller.signal));
+        } catch {
+          music = undefined;
+        }
+      }
+      if (!controller.signal.aborted) {
+        setPreviewMusic(music);
+        setFilmPreview(result);
+      }
     } catch (reason) {
       if (!controller.signal.aborted) setError(videoError(reason));
     } finally {
@@ -620,7 +639,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 <div><span className="eyebrow">Preview · not rendered yet</span><h2>{filmPreview.plan.concept}</h2></div>
               </div>
               <FilmPreview html={filmPreview.html} width={filmPreview.width} height={filmPreview.height}
-                media={localMedia} />
+                media={playerMedia} />
               <p className="field-help">{formatDuration(filmPreview.duration)} · {filmPreview.beats.length} beats · planned by {filmPreview.planner_model}. Fonts may differ slightly until rendered.{[form.music ? 'Music' : '', form.voice_over ? 'Voice-over' : ''].filter(Boolean).join(' and ') ? ` ${[form.music ? 'Music' : '', form.voice_over ? 'voice-over' : ''].filter(Boolean).join(' and ')} ${form.music && form.voice_over ? 'are' : 'is'} added in the render.` : ''}</p>
               <ol className="film-beats">{filmPreview.beats.map((beat, index) => <li key={index}>
                 <small>{FILM_BLOCK_LABELS[beat.block]} · {beat.start.toFixed(1)}s</small>
