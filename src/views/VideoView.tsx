@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
+import { BrandKitPanel } from '../components/BrandKitPanel';
 import { FilmPreview } from '../components/FilmPreview';
+import { brandPayload, type SavedBrandKit } from '../brandKits';
 import { ImageIcon, PlayIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
 import {
   DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, IMAGE_ROLE_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS,
@@ -48,6 +50,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
   const [images, setImages] = useState<VideoImageDraft[]>([]);
   const [imageStatus, setImageStatus] = useState<ImageStatusResponse>();
   const [imagePrompt, setImagePrompt] = useState('');
+  const [brandKit, setBrandKit] = useState<SavedBrandKit | null>(null);
   const [imageError, setImageError] = useState('');
   const [preparingImage, setPreparingImage] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -180,7 +183,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setPreviewing(false);
     setFilmPreview(undefined);
     return () => { previewController.current?.abort(); };
-  }, [form, images, client, status?.default_engine]);
+  }, [form, images, brandKit, client, status?.default_engine]);
 
   const engine = resolveVideoEngine(status, form.engine);
   const maxDuration = videoMaxDuration(status, engine);
@@ -205,7 +208,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       engine,
       creative_mode: images.length || engine === 'hyperframes' ? 'auto' : form.creative_mode,
       prompt: form.prompt.trim(),
-      images: videoImagePayload(images)
+      images: videoImagePayload(images),
+      music: engine === 'hyperframes' && Boolean(form.music),
+      brand: engine === 'hyperframes' ? brandPayload(brandKit) : undefined
     };
   }
 
@@ -273,6 +278,19 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       setImageError(videoError(reason));
     } finally {
       setGeneratingImage(false);
+    }
+  }
+
+  async function applyBrandKit(kit: SavedBrandKit | null) {
+    setBrandKit(kit);
+    // The kit's logo joins the uploads once, as the logo image.
+    if (!kit?.logo || images.some(image => image.role === 'logo') || images.length >= maxImages) return;
+    try {
+      const blob = await (await fetch(kit.logo)).blob();
+      const draft = await prepareVideoImage(new File([blob], `${kit.name || 'brand'}-logo.png`, { type: blob.type }));
+      appendImages([{ ...draft, role: 'logo', fit: 'contain' }]);
+    } catch (reason) {
+      setImageError(`Could not add the kit logo: ${videoError(reason)}`);
     }
   }
 
@@ -539,8 +557,12 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           </div>
           {engine === 'hyperframes' && videoStyleDescription(form.style) &&
             <p className="field-help">{videoStyleDescription(form.style)}</p>}
+          {engine === 'hyperframes' && <BrandKitPanel kit={brandKit} disabled={Boolean(jobId)}
+            onChange={kit => void applyBrandKit(kit)} />}
           <label className="video-sound"><input type="checkbox" checked={form.sound_effects}
             onChange={event => update('sound_effects', event.target.checked)} /> {engine === 'hyperframes' ? 'Sound effects' : 'Soundtrack'} <small>{engine === 'hyperframes' ? 'Original cues matched to motion; quieter under narration' : 'Quiet score; cues only for visible actions'}</small></label>
+          {engine === 'hyperframes' && <label className="video-sound"><input type="checkbox" checked={Boolean(form.music)}
+            onChange={event => update('music', event.target.checked)} /> Music <small>Original track generated for this film; cuts land on its beat</small></label>}
           <label className="video-sound"><input type="checkbox" checked={form.voice_over}
             onChange={event => update('voice_over', event.target.checked)} /> AI voice-over <small>Uses Gemini free-tier TTS quota; Malay or English narration</small></label>
           <p className="field-help">Standard quality uses more render compute.</p>
@@ -566,7 +588,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
                 <div><span className="eyebrow">Preview · not rendered yet</span><h2>{filmPreview.plan.concept}</h2></div>
               </div>
               <FilmPreview html={filmPreview.html} width={filmPreview.width} height={filmPreview.height} />
-              <p className="field-help">{formatDuration(filmPreview.duration)} · {filmPreview.beats.length} beats · planned by {filmPreview.planner_model}. Fonts may differ slightly until rendered.{form.voice_over ? ' Voice-over is added in the render.' : ''}</p>
+              <p className="field-help">{formatDuration(filmPreview.duration)} · {filmPreview.beats.length} beats · planned by {filmPreview.planner_model}. Fonts may differ slightly until rendered.{[form.music ? 'Music' : '', form.voice_over ? 'Voice-over' : ''].filter(Boolean).join(' and ') ? ` ${[form.music ? 'Music' : '', form.voice_over ? 'voice-over' : ''].filter(Boolean).join(' and ')} ${form.music && form.voice_over ? 'are' : 'is'} added in the render.` : ''}</p>
               <ol className="film-beats">{filmPreview.beats.map((beat, index) => <li key={index}>
                 <small>{FILM_BLOCK_LABELS[beat.block]} · {beat.start.toFixed(1)}s</small>
                 <strong>{beat.headline}</strong>

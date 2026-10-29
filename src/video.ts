@@ -9,6 +9,7 @@ export const DEFAULT_VIDEO_REQUEST: VideoGenerateRequest = {
   style: 'premium-dark',
   sound_effects: true,
   voice_over: false,
+  music: true,
   creative_mode: 'auto',
   title: '',
   images: []
@@ -92,7 +93,12 @@ export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
   logo: 'Logo',
   price: 'Price',
   slider: 'Photo before / after',
-  wordswap: 'Word flip'
+  wordswap: 'Word flip',
+  flow: 'App walkthrough',
+  fan: 'Phones side by side',
+  chaos: 'Problem tiles',
+  tags: 'Feature cloud',
+  ui: 'Drawn interface'
 };
 
 /** Style directions. Each is a full look in the motion-design engine

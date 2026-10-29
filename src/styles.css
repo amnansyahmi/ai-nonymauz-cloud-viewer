@@ -671,3 +671,20 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .voice-chat-disclosure { font-size: 10px; }
   .voice-chat-actions button { min-height: 44px; }
 }
+
+/* Brand kit */
+.brand-kit { display: grid; gap: 12px; margin-top: 14px; padding: 14px; border-radius: 14px; border: 1px solid var(--line, rgba(255,255,255,.08)); }
+.brand-kit-head { display: flex; align-items: flex-end; gap: 12px; }
+.brand-kit-head label { flex: 1; }
+.brand-swatches { display: flex; gap: 6px; padding-bottom: 12px; }
+.brand-swatches i { width: 20px; height: 20px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+.brand-kit-fields { display: grid; gap: 12px; }
+.brand-colours { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.brand-colours label span { display: flex; align-items: center; gap: 6px; }
+.brand-colours input[type="color"] { width: 100%; min-height: 40px; padding: 2px; border-radius: 10px; cursor: pointer; }
+.brand-colours input[type="checkbox"] { width: 16px; height: 16px; min-height: 16px; accent-color: var(--accent); }
+.brand-logo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.brand-logo img, .brand-logo-empty { width: 52px; height: 52px; border-radius: 12px; object-fit: contain; background: rgba(255,255,255,.06); }
+.brand-logo-empty { display: grid; place-items: center; font-size: 10px; color: var(--muted-2); }
+.brand-kit-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 520px) { .brand-colours { grid-template-columns: 1fr 1fr; } }
