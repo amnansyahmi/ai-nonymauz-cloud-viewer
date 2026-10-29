@@ -153,3 +153,19 @@ describe('style directions', () => {
     expect(videoStyleDescription('unknown')).toBe('');
   });
 });
+
+
+describe('visual story inputs', () => {
+  it('preserves crop focus for both upload paths', async () => {
+    const { videoImagePayload } = await import('../videoImages');
+    const images = [{id:'x',name:'product.png',data_url:'data:image/png;base64,AA==',caption:'Product',
+      fit:'cover' as const,role:'photo' as const,sizeBytes:1,width:800,height:1000,focal_x:.2,focal_y:.8}];
+    for (const reference of [false,true]) {
+      expect(videoImagePayload(images, reference)[0]).toMatchObject({focal_x:.2,focal_y:.8});
+    }
+  });
+  it('labels visual story scenes', async () => {
+    const { FILM_BLOCK_LABELS } = await import('../video');
+    expect(FILM_BLOCK_LABELS.tableau).toBe('Visual story');
+  });
+});

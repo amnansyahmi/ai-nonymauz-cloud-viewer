@@ -688,3 +688,5 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .brand-logo-empty { display: grid; place-items: center; font-size: 10px; color: var(--muted-2); }
 .brand-kit-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 520px) { .brand-colours { grid-template-columns: 1fr 1fr; } }
+
+.video-focal{border:1px solid var(--border);border-radius:10px;padding:10px}.video-focal label{display:flex;gap:12px;align-items:center}.film-editorial{margin-top:16px}.film-beats p{margin:6px 0;font-size:.85rem;line-height:1.5}

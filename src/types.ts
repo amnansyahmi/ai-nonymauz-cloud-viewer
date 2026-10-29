@@ -225,7 +225,7 @@ export interface VideoStatusResponse {
 
 export type FilmBlock = 'hook' | 'kinetic' | 'stat' | 'list' | 'steps' | 'compare' | 'quote' | 'image' | 'cta'
   | 'device' | 'chart' | 'map' | 'logo' | 'price' | 'slider' | 'wordswap'
-  | 'flow' | 'fan' | 'chaos' | 'tags' | 'ui';
+  | 'flow' | 'fan' | 'chaos' | 'tags' | 'ui' | 'tableau';
 
 export type BrandFont = 'inter' | 'grotesk' | 'editorial' | 'condensed' | 'mono'
   | 'montserrat' | 'poppins' | 'outfit' | 'nunito' | 'oswald';
@@ -251,6 +251,12 @@ export interface FilmBeat {
   image_index: number | null;
   narration: string;
   transition_in: string;
+  narrative_role?: 'auto' | 'problem' | 'mechanism' | 'proof' | 'payoff';
+  visual_action?: string;
+  stage_action?: 'auto' | 'assemble' | 'journey' | 'resolve';
+  composition?: 'auto' | 'hero' | 'editorial' | 'split' | 'cutout';
+  camera?: 'auto' | 'locked' | 'push' | 'pan';
+  continuity?: boolean;
 }
 
 export interface FilmPlan {
@@ -273,7 +279,9 @@ export interface VideoPreviewResponse {
   height: number;
   duration: number;
   transitions: string[];
-  beats: Array<{ block: FilmBlock; start: number; end: number; headline: string }>;
+  editorial_notes?: string[];
+  beats: Array<{ block: FilmBlock; start: number; end: number; headline: string;
+    narrative_role?: string; visual_action?: string; composition?: string }>;
   /** Background music to synthesise for the player (POST /v1/video/music). */
   music?: VideoMusicSpec | null;
   note?: string;
@@ -285,6 +293,7 @@ export interface VideoMusicSpec {
   energy: 'calm' | 'balanced' | 'energetic';
   seed: number;
   ducks: Array<[number, number]>;
+  sections?: Array<[number, number, 'problem' | 'mechanism' | 'proof' | 'payoff']>;
 }
 
 export type VideoImageRole = 'photo' | 'screenshot' | 'logo';
@@ -295,6 +304,8 @@ export interface VideoImageInput {
   data_url?: string;
   caption: string;
   fit: 'contain' | 'cover';
+  focal_x?: number;
+  focal_y?: number;
   /** How the motion-design engine uses the image. Older backends ignore it. */
   role?: VideoImageRole;
   /** By reference: what the backend needs without the bytes. */
@@ -385,6 +396,8 @@ export interface VideoJobResponse {
   planner_model?: string | null;
   variation_seed?: number;
   transitions?: string[];
+  quality_report?: { ok: boolean; samples: number; method: string; warnings: string[];
+    errors: string[]; output?: { ok: boolean; duration: number; width: number; height: number } };
 }
 
 export interface RagSearchResponse {
