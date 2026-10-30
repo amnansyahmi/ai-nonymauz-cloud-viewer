@@ -225,7 +225,7 @@ export interface VideoStatusResponse {
 
 export type FilmBlock = 'hook' | 'kinetic' | 'stat' | 'list' | 'steps' | 'compare' | 'quote' | 'image' | 'cta'
   | 'device' | 'chart' | 'map' | 'logo' | 'price' | 'slider' | 'wordswap'
-  | 'flow' | 'fan' | 'chaos' | 'tags' | 'ui' | 'tableau';
+  | 'flow' | 'fan' | 'chaos' | 'tags' | 'ui' | 'tableau' | 'event';
 
 export type BrandFont = 'inter' | 'grotesk' | 'editorial' | 'condensed' | 'mono'
   | 'montserrat' | 'poppins' | 'outfit' | 'nunito' | 'oswald';
@@ -257,6 +257,10 @@ export interface FilmBeat {
   composition?: 'auto' | 'hero' | 'editorial' | 'split' | 'cutout';
   camera?: 'auto' | 'locked' | 'push' | 'pan';
   continuity?: boolean;
+  /** event: date, time and venue as written in the brief; day is worked out by the backend. */
+  event?: { date: string; time: string; venue: string; address: string; day: string } | null;
+  /** map: where the venue is (set by the backend; kept so the render matches the preview). */
+  spot?: { lat: number; lon: number; name: string; state: string; source: 'link' | 'address' | 'town' } | null;
 }
 
 export interface FilmPlan {

@@ -88,6 +88,7 @@ export const IMAGE_ROLE_LABELS: Record<VideoImageRole, string> = {
 
 export const FILM_BLOCK_LABELS: Record<FilmBlock, string> = {
   tableau: 'Visual story',
+  event: 'Event details',
   hook: 'Hook',
   kinetic: 'Statement',
   stat: 'Number',
@@ -119,7 +120,8 @@ export const VIDEO_STYLES: ReadonlyArray<{ value: string; label: string; descrip
   { value: 'product-demo', label: 'Product demo', description: 'Clean app canvas: dot grid, floating UI windows, app-tile icons and a cursor.' },
   { value: 'tech', label: 'Tech', description: 'A 3D wireframe and particle field, circuit traces and monospace type.' },
   { value: 'cinematic', label: 'Cinematic', description: 'Warm film: vignette, light leaks, heavy grain, serif titles and slow dissolves.' },
-  { value: 'clean-light', label: 'Clean light', description: 'Bright paper, soft pastel shapes that morph and pop, rounded panels.' }
+  { value: 'clean-light', label: 'Clean light', description: 'Bright paper, soft pastel shapes that morph and pop, rounded panels.' },
+  { value: 'elegant', label: 'Elegant', description: 'Soft light, fine framed corners, classic serif titles and gentle dissolves. For weddings and celebrations.' }
 ];
 
 export function videoStyleDescription(style: string): string {
