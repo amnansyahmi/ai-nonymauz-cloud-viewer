@@ -3,6 +3,7 @@ import { ApiClient } from '../api/client';
 import { BrandKitPanel } from '../components/BrandKitPanel';
 import { FilmPreview } from '../components/FilmPreview';
 import { brandPayload, type SavedBrandKit } from '../brandKits';
+import { beginTask, collectTask, endTask, pendingTask, pendingTasks, updatePending } from '../background';
 import { ImageIcon, PlayIcon, RefreshIcon, TrashIcon, VideoIcon } from '../components/Icons';
 import {
   DEFAULT_VIDEO_REQUEST, FILM_BLOCK_LABELS, IMAGE_ROLE_LABELS, VIDEO_JOB_STORAGE_KEY, VIDEO_STAGE_LABELS,
@@ -104,6 +105,48 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
 
   useEffect(() => { void refreshJobs(); }, [refreshJobs]);
 
+  // Back on screen: pick the render up again (its last poll may have died).
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.hidden) return;
+      setError(previous => previous.startsWith('No response from the backend') ? '' : previous);
+      setPollRevision(revision => revision + 1);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
+  // A render started before the app was closed: show it again.
+  useEffect(() => {
+    if (jobId || !settings.apiKey.trim()) return;
+    const waiting = pendingTasks().filter(task => task.kind === 'video');
+    const withJob = [...waiting].reverse().find(task => task.meta?.job);
+    if (withJob?.meta?.job) {
+      setJobId(withJob.meta.job);
+      return;
+    }
+    const lost = [...waiting].reverse().find(task => task.away);
+    if (lost) void recoverJob(lost.id);
+    // Once per connection, on launch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client]);
+
+  async function recoverJob(taskId: string, original?: unknown) {
+    setNotice('Still preparing the render in the background…');
+    const found = await collectTask(client, taskId);
+    setNotice('');
+    const started = found?.result as { job_id?: string } | undefined;
+    if (started?.job_id) {
+      updatePending(taskId, { meta: { job: started.job_id } });
+      sessionStorage.setItem(VIDEO_JOB_STORAGE_KEY, started.job_id);
+      setJobId(started.job_id);
+      void refreshJobs();
+    } else {
+      endTask(client, taskId);
+      setError(original ? videoError(original) : 'The render did not start. Generate it again.');
+    }
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     void refreshStatus(controller.signal);
@@ -131,14 +174,23 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
         if (controller.signal.aborted) return;
         setJob(current);
         setError('');
-        if (!activeStatuses.has(current.status)) return;
+        if (!activeStatuses.has(current.status)) {
+          if (current.status !== 'awaiting_media') {
+            for (const task of pendingTasks()) {
+              if (task.kind === 'video' && task.meta?.job === jobId) endTask(client, task.id);
+            }
+          }
+          return;
+        }
         if (++attempts >= 750) {
           setError('Still rendering after 25 minutes. Refresh the job to check again.');
           return;
         }
         timer = setTimeout(() => void poll(), 2000);
       } catch (reason) {
-        if (!controller.signal.aborted) setError(videoError(reason));
+        // In the background the request dies with the app; the render does
+        // not. Polling resumes when the app is back on screen.
+        if (!controller.signal.aborted && !document.hidden) setError(videoError(reason));
       }
     };
     timer = setTimeout(() => void poll(), job?.job_id === jobId ? 2000 : 0);
@@ -365,13 +417,18 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
     setSubmitting(true);
     setError('');
     setNotice('');
+    // With a key, a render can notify when it is done, and a request lost
+    // while the app was away can be picked up again.
+    const block = settings.apiKey.trim() ? beginTask('video', form.prompt.trim()) : undefined;
     try {
       // Rendering a previewed film sends its plan and seed, so the MP4 is the
       // film that was watched rather than a fresh plan.
-      const body = filmPreview && engine === 'hyperframes'
+      const base = filmPreview && engine === 'hyperframes'
         ? { ...requestBody(), film_plan: filmPreview.plan, variation_seed: filmPreview.variation_seed }
         : requestBody();
+      const body = block ? { ...base, background: block } : base;
       let next = await client.generateVideo(body);
+      if (block) updatePending(block.task_id, { meta: { job: next.job_id } });
       if (next.status === 'awaiting_media' && next.media?.length) {
         // Each file goes up in chunks under the 4.5 MB request limit, then
         // the render starts. Keys follow the order of the images sent.
@@ -398,7 +455,13 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       setJobId(next.job_id);
       void refreshJobs();
     } catch (reason) {
-      setError(videoError(reason));
+      const task = block ? pendingTask(block.task_id) : undefined;
+      if (block && task?.away && !task.meta?.job) {
+        await recoverJob(block.task_id, reason);
+      } else {
+        if (block && !task?.meta?.job) endTask(client, block.task_id);
+        setError(videoError(reason));
+      }
     } finally {
       setSubmitting(false);
     }

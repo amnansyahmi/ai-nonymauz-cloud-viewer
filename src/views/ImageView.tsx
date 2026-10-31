@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiClient } from '../api/client';
+import { beginTask, collectTask, endTask, pendingTask, pendingTasks } from '../background';
 import { ImageIcon, RefreshIcon } from '../components/Icons';
 import type { ChatSettings, ImageGenerateResponse, ImageStatusResponse } from '../types';
 
@@ -45,22 +46,55 @@ export function ImageView({ settings }: { settings: ChatSettings }) {
     setError('');
     setResult(undefined);
 
+    const client = new ApiClient(settings.backendUrl, settings.apiKey);
+    const block = settings.apiKey.trim() ? beginTask('image', prompt.trim()) : undefined;
     try {
-      const client = new ApiClient(settings.backendUrl, settings.apiKey);
-      const generated = await client.generateImage(prompt.trim(), style, size);
-      setResult(generated);
-      setStatus(previous => ({
-        ...previous,
-        model: generated.model ?? previous?.model,
-        usage_today: generated.usage_today,
-        daily_limit: generated.daily_limit
-      }));
+      showGenerated(await client.generateImage(prompt.trim(), style, size, block));
+      if (block) endTask(client, block.task_id);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      if (block && pendingTask(block.task_id)?.away) {
+        // The app left while the image was being made; the backend kept it.
+        await recover(client, block.task_id, reason);
+      } else {
+        if (block) endTask(client, block.task_id);
+        setError(reason instanceof Error ? reason.message : String(reason));
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  function showGenerated(generated: ImageGenerateResponse) {
+    setResult(generated);
+    setStatus(previous => ({
+      ...previous,
+      model: generated.model ?? previous?.model,
+      usage_today: generated.usage_today,
+      daily_limit: generated.daily_limit
+    }));
+  }
+
+  async function recover(client: ApiClient, taskId: string, original?: unknown) {
+    setLoading(true);
+    setError('');
+    const found = await collectTask(client, taskId);
+    endTask(client, taskId);
+    const image = found?.result as (ImageGenerateResponse & { error?: string }) | undefined;
+    if (image?.image_base64) showGenerated(image);
+    else setError(image?.error ?? (original instanceof Error ? original.message
+      : 'The image did not come back. Generate it again.'));
+    setLoading(false);
+  }
+
+  // An image finished while the app was closed (or reloaded): show it.
+  useEffect(() => {
+    if (!settings.apiKey.trim()) return;
+    const waiting = pendingTasks().filter(task => task.kind === 'image' && task.away);
+    if (!waiting.length || loading) return;
+    void recover(new ApiClient(settings.backendUrl, settings.apiKey), waiting[waiting.length - 1].id);
+    // Run once per connection, like loadStatus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.backendUrl, settings.apiKey]);
 
   function download() {
     if (!result) return;

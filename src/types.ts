@@ -340,6 +340,8 @@ export interface VideoExpectedMedia {
 
 export interface VideoGenerateRequest {
   prompt: string;
+  /** Lets the backend notify, and keep a lost request's job, if the app leaves. */
+  background?: import('./background').BackgroundBlock;
   duration: number;
   aspect_ratio: VideoAspectRatio;
   quality: VideoQuality;

@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { ApiClient } from '../api/client';
+import { disableNotifications, enableNotifications, notificationState, type NotificationState } from '../background';
 import type { AppTab, ChatSettings } from '../types';
 import {
   ChatIcon,
@@ -125,6 +128,8 @@ export function Sidebar({
             Save & reconnect
           </button>
 
+          <NotificationsControl settings={settings} />
+
           {connectionMessage && <p className="connection-note">{connectionMessage}</p>}
           <p className="connection-note subtle">
             API keys are never read from Vite env variables because browser env values are public.
@@ -132,5 +137,56 @@ export function Sidebar({
         </div>
       </details>
     </aside>
+  );
+}
+
+const NOTIFICATION_NOTES: Record<NotificationState, string> = {
+  on: 'You will be notified when a reply, image or video finishes while the app is in the background.',
+  off: 'Get a notification when a reply, image or video finishes while the app is in the background.',
+  denied: 'Notifications are blocked for this app. Allow them in the phone settings, then try again.',
+  install: 'On iPhone, add this app to the Home Screen (Share, then Add to Home Screen) and open it from there to turn notifications on.',
+  unsupported: 'This browser does not support notifications for web apps.'
+};
+
+function NotificationsControl({ settings }: { settings: ChatSettings }) {
+  const [state, setState] = useState<NotificationState>('off');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => { setState(notificationState()); }, []);
+
+  async function toggle() {
+    setBusy(true);
+    setError('');
+    try {
+      if (state === 'on') {
+        await disableNotifications();
+        setState(notificationState());
+      } else {
+        setState(await enableNotifications(new ApiClient(settings.backendUrl, settings.apiKey)));
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setState(notificationState());
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canToggle = (state === 'on' || state === 'off') && Boolean(settings.apiKey.trim());
+  return (
+    <div className="notify-control">
+      <div className="notify-row">
+        <b>Notifications</b>
+        <button className={state === 'on' ? 'ghost compact' : 'primary compact'} type="button"
+                disabled={!canToggle || busy} onClick={() => void toggle()}>
+          {busy ? 'Working…' : state === 'on' ? 'Turn off' : 'Turn on'}
+        </button>
+      </div>
+      <p className="connection-note">
+        {settings.apiKey.trim() || state !== 'off' ? NOTIFICATION_NOTES[state] : 'Add the API key first: notifications use it.'}
+      </p>
+      {error && <p className="connection-note notify-error">{error}</p>}
+    </div>
   );
 }
