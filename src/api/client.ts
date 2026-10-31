@@ -1,5 +1,6 @@
 import { consumeSse } from './sse';
 import { messagesHaveImages } from '../chatImages';
+import type { BackgroundBlock, PushSubscriptionJson, TaskResult } from '../background';
 import type {
   BenchmarkResult,
   ChatMessage,
@@ -187,11 +188,42 @@ export class ApiClient {
     return this.json(`/rag/search?${params.toString()}`);
   }
 
-  generateImage(prompt: string, style: string, size: string): Promise<ImageGenerateResponse> {
+  generateImage(prompt: string, style: string, size: string, background?: BackgroundBlock): Promise<ImageGenerateResponse> {
     return this.json('/image/generate', {
       method: 'POST',
-      body: JSON.stringify({ prompt, style, size })
+      body: JSON.stringify({ prompt, style, size, ...(background ? { background } : {}) })
     });
+  }
+
+  /** The key notifications are subscribed with (made by the backend on first use). */
+  pushKey(): Promise<{ enabled: boolean; public_key: string | null }> {
+    return this.json('/v1/push/key');
+  }
+
+  pushTest(push: PushSubscriptionJson): Promise<{ delivered: boolean }> {
+    return this.json('/v1/push/test', { method: 'POST', body: JSON.stringify({ push }) });
+  }
+
+  /** Sent as the app hides: keepalive lets it leave after the page is suspended.
+   * Some browsers refuse keepalive for a cross-origin request with a key
+   * (it needs a preflight); the page still runs for a moment, so retry plainly. */
+  async taskPresence(taskId: string, away: boolean): Promise<void> {
+    const path = `/v1/tasks/${encodeURIComponent(taskId)}/presence`;
+    const init: RequestInit = { method: 'PUT', body: JSON.stringify({ away }) };
+    try {
+      await this.checkedFetch(path, { ...init, keepalive: true });
+    } catch (reason) {
+      if (reason instanceof Error && reason.message.startsWith('HTTP ')) throw reason;
+      await this.checkedFetch(path, init);
+    }
+  }
+
+  task(taskId: string): Promise<TaskResult> {
+    return this.json(`/v1/tasks/${encodeURIComponent(taskId)}`);
+  }
+
+  async forgetTask(taskId: string): Promise<void> {
+    await this.checkedFetch(`/v1/tasks/${encodeURIComponent(taskId)}`, { method: 'DELETE' });
   }
 
   videoStatus(signal?: AbortSignal): Promise<VideoStatusResponse> {
@@ -260,11 +292,12 @@ export class ApiClient {
       onUsage: (totalTokens: number) => void;
       onFirstToken: () => void;
     },
-    signal: AbortSignal
+    signal: AbortSignal,
+    background?: BackgroundBlock
   ): Promise<ChatStreamResult> {
     const response = await this.checkedFetch('/chat', {
       method: 'POST',
-      body: JSON.stringify(buildChatRequestBody(settings, messages)),
+      body: JSON.stringify({ ...buildChatRequestBody(settings, messages), ...(background ? { background } : {}) }),
       signal
     });
 

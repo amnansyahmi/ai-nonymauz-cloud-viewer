@@ -690,3 +690,10 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 @media (max-width: 520px) { .brand-colours { grid-template-columns: 1fr 1fr; } }
 
 .video-focal{border:1px solid var(--border);border-radius:10px;padding:10px}.video-focal label{display:flex;gap:12px;align-items:center}.film-editorial{margin-top:16px}.film-beats p{margin:6px 0;font-size:.85rem;line-height:1.5}
+
+/* Visited tabs stay mounted; only the active one is laid out. */
+.view-slot { display: contents; }
+.view-slot[hidden] { display: none; }
+.notify-control { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 2px; border-top: 1px solid var(--border); }
+.notify-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
+.notify-error { color: #f3a5a5; }

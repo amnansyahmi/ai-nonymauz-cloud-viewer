@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiClient, normalizeBackendUrl } from './api/client';
+import { launchTarget, registerWorker, reportPresence } from './background';
 import { Sidebar } from './components/Sidebar';
 import { BenchmarkView } from './views/BenchmarkView';
 import { ChatView } from './views/ChatView';
@@ -19,13 +20,47 @@ function backendHost(url: string): string {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<AppTab>('chat');
+  // A tapped notification opens the app on the tab its result belongs to.
+  const [activeTab, setActiveTab] = useState<AppTab>(() => launchTarget(window.location.search)?.kind ?? 'chat');
+  // Tabs stay mounted once opened, so leaving one never drops its work.
+  const [visited, setVisited] = useState<Set<AppTab>>(() => new Set([activeTab]));
   const [settings, setSettings] = useState<ChatSettings>(() => loadSettings());
   const [models, setModels] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<ProfilesResponse>({});
   const [health, setHealth] = useState<HealthResponse>();
   const [connectionState, setConnectionState] = useState<'checking' | 'online' | 'offline'>('checking');
   const [connectionMessage, setConnectionMessage] = useState('');
+
+  const openTab = useCallback((tab: AppTab) => {
+    setActiveTab(tab);
+    setVisited(previous => previous.has(tab) ? previous : new Set(previous).add(tab));
+  }, []);
+
+  useEffect(() => {
+    if (launchTarget(window.location.search)) window.history.replaceState(null, '', window.location.pathname);
+    void registerWorker();
+    const onMessage = (event: MessageEvent) => {
+      const kind = event.data?.type === 'open-task' ? event.data.kind : undefined;
+      if (kind === 'chat' || kind === 'image' || kind === 'video') openTab(kind);
+    };
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
+  }, [openTab]);
+
+  // Tell the backend which running tasks the app is leaving, so it keeps
+  // their results and notifies; and that it is back, for renders.
+  useEffect(() => {
+    if (!settings.apiKey.trim()) return;
+    const client = new ApiClient(settings.backendUrl, settings.apiKey);
+    const onVisibility = () => reportPresence(client, document.hidden);
+    const onHide = () => reportPresence(client, true);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, [settings.apiKey, settings.backendUrl]);
 
   const updateSettings = useCallback((patch: Partial<ChatSettings>) => {
     setSettings(current => ({ ...current, ...patch }));
@@ -108,7 +143,7 @@ export default function App() {
     <div className={`app-shell ${activeTab === 'chat' ? 'chat-app-shell' : ''}`}>
       <Sidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={openTab}
         settings={settings}
         onSettingsChange={updateSettings}
         onReconnect={() => void refreshCore()}
@@ -129,19 +164,27 @@ export default function App() {
           </div>
         </header>
 
-        {activeTab === 'chat' && (
-          <ChatView
-            settings={settings}
-            modelOptions={models}
-            profiles={profiles}
-            onSettingsChange={updateSettings}
-          />
+        {visited.has('chat') && (
+          <div className="view-slot" hidden={activeTab !== 'chat'}>
+            <ChatView
+              settings={settings}
+              modelOptions={models}
+              profiles={profiles}
+              onSettingsChange={updateSettings}
+            />
+          </div>
         )}
-        {activeTab === 'diagnostics' && <DiagnosticsView settings={settings} />}
-        {activeTab === 'rag' && <RagView settings={settings} />}
-        {activeTab === 'benchmark' && <BenchmarkView settings={settings} modelOptions={models} />}
-        {activeTab === 'image' && <ImageView settings={settings} />}
-        {activeTab === 'video' && <VideoView settings={settings} />}
+        {visited.has('diagnostics') && (
+          <div className="view-slot" hidden={activeTab !== 'diagnostics'}><DiagnosticsView settings={settings} /></div>
+        )}
+        {visited.has('rag') && <div className="view-slot" hidden={activeTab !== 'rag'}><RagView settings={settings} /></div>}
+        {visited.has('benchmark') && (
+          <div className="view-slot" hidden={activeTab !== 'benchmark'}>
+            <BenchmarkView settings={settings} modelOptions={models} />
+          </div>
+        )}
+        {visited.has('image') && <div className="view-slot" hidden={activeTab !== 'image'}><ImageView settings={settings} /></div>}
+        {visited.has('video') && <div className="view-slot" hidden={activeTab !== 'video'}><VideoView settings={settings} /></div>}
       </main>
     </div>
   );
