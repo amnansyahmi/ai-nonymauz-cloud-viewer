@@ -304,6 +304,8 @@ export interface VideoAudioSelection {
   music: { source: 'catalog' | 'generated' | 'off' } & Partial<VideoAudioCredit>;
   effects: Array<VideoAudioCredit & { event: string }>;
   generated_effects: number;
+  /** Recordings in the backend's approved library (absent on older backends). */
+  catalog_tracks?: number;
 }
 
 export interface VideoMusicSpec {

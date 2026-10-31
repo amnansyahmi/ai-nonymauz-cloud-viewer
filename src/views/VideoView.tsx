@@ -684,7 +684,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           <label className="video-sound"><input type="checkbox" checked={form.sound_effects}
             onChange={event => update('sound_effects', event.target.checked)} /> {engine === 'hyperframes' ? 'Sound effects' : 'Soundtrack'} <small>{engine === 'hyperframes' ? 'Automatically matched to motion; quieter under narration' : 'Quiet score; cues only for visible actions'}</small></label>
           {engine === 'hyperframes' && <label className="video-sound"><input type="checkbox" checked={Boolean(form.music)}
-            onChange={event => update('music', event.target.checked)} /> Music <small>Automatically selects catalog music; generated fallback when unavailable</small></label>}
+            onChange={event => update('music', event.target.checked)} /> Music <small>An approved library track that suits the film, or an original generated track; cuts land on its beat</small></label>}
           <label className="video-sound"><input type="checkbox" checked={form.voice_over}
             onChange={event => update('voice_over', event.target.checked)} /> AI voice-over <small>Uses Gemini free-tier TTS quota; Malay or English narration</small></label>
           <p className="field-help">Standard quality uses more render compute.</p>

@@ -7,6 +7,10 @@ describe('audio selection report', () => {
     expect(renderToString(<AudioSelection />)).toBe('');
     expect(renderToString(<AudioSelection selection={{ music: { source: 'off' }, effects: [], generated_effects: 0 }} />)).toBe('');
   });
+  it('stays quiet while the backend has no audio library', () => {
+    expect(renderToString(<AudioSelection selection={{ music: { source: 'generated' }, effects: [], generated_effects: 3,
+      catalog_tracks: 0 }} />)).toBe('');
+  });
   it('reports generated fallback explicitly', () => {
     const html = renderToString(<AudioSelection selection={{ music: { source: 'generated' }, effects: [], generated_effects: 3 }} />);
     expect(html).toContain('generated fallback');

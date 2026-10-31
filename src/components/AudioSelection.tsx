@@ -4,6 +4,8 @@ export function AudioSelection({ selection }: { selection?: VideoAudioSelection 
   if (!selection) return null;
   const { music, effects, generated_effects } = selection;
   if (music.source === 'off' && effects.length === 0 && generated_effects === 0) return null;
+  // With no library at all, generated audio is simply the normal behaviour.
+  if (selection.catalog_tracks === 0) return null;
   return <details className="film-editorial">
     <summary>Selected audio</summary>
     {music.source === 'catalog' && <p>Music: {music.title} — {music.artist}. {music.license}.
