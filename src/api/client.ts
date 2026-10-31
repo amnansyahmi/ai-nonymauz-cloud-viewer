@@ -204,11 +204,18 @@ export class ApiClient {
     return this.json('/v1/push/test', { method: 'POST', body: JSON.stringify({ push }) });
   }
 
-  /** Sent as the app hides: keepalive lets it leave after the page is suspended. */
+  /** Sent as the app hides: keepalive lets it leave after the page is suspended.
+   * Some browsers refuse keepalive for a cross-origin request with a key
+   * (it needs a preflight); the page still runs for a moment, so retry plainly. */
   async taskPresence(taskId: string, away: boolean): Promise<void> {
-    await this.checkedFetch(`/v1/tasks/${encodeURIComponent(taskId)}/presence`, {
-      method: 'PUT', body: JSON.stringify({ away }), keepalive: true
-    });
+    const path = `/v1/tasks/${encodeURIComponent(taskId)}/presence`;
+    const init: RequestInit = { method: 'PUT', body: JSON.stringify({ away }) };
+    try {
+      await this.checkedFetch(path, { ...init, keepalive: true });
+    } catch (reason) {
+      if (reason instanceof Error && reason.message.startsWith('HTTP ')) throw reason;
+      await this.checkedFetch(path, init);
+    }
   }
 
   task(taskId: string): Promise<TaskResult> {

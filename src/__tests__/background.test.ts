@@ -85,6 +85,16 @@ describe('background tasks', () => {
 });
 
 describe('background API calls', () => {
+  it('retries presence without keepalive when the browser refuses it', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(Response.json({}));
+    vi.stubGlobal('fetch', fetchMock);
+    await new ApiClient('https://example.test', 'secret').taskPresence('e'.repeat(32), true);
+    expect(fetchMock.mock.calls[0][1].keepalive).toBe(true);
+    expect(fetchMock.mock.calls[1][1].keepalive).toBeUndefined();
+  });
+
   it('sends presence with keepalive so it leaves as the page is suspended', async () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({}));
     vi.stubGlobal('fetch', fetchMock);
