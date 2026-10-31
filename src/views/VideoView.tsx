@@ -1,3 +1,4 @@
+import { AudioSelection } from '../components/AudioSelection';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiClient } from '../api/client';
 import { BrandKitPanel } from '../components/BrandKitPanel';
@@ -294,8 +295,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
       if (result.music) {
         try {
           music = await toDataUrl(await client.previewMusic(result.music, controller.signal));
-        } catch {
+        } catch (cause) {
           music = undefined;
+          if (!controller.signal.aborted) setNotice(`Music preview unavailable: ${videoError(cause)}. Refresh the preview to try again.`);
         }
       }
       if (!controller.signal.aborted) {
@@ -680,9 +682,9 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
           {engine === 'hyperframes' && <BrandKitPanel kit={brandKit} disabled={Boolean(jobId)}
             onChange={kit => void applyBrandKit(kit)} />}
           <label className="video-sound"><input type="checkbox" checked={form.sound_effects}
-            onChange={event => update('sound_effects', event.target.checked)} /> {engine === 'hyperframes' ? 'Sound effects' : 'Soundtrack'} <small>{engine === 'hyperframes' ? 'Original cues matched to motion; quieter under narration' : 'Quiet score; cues only for visible actions'}</small></label>
+            onChange={event => update('sound_effects', event.target.checked)} /> {engine === 'hyperframes' ? 'Sound effects' : 'Soundtrack'} <small>{engine === 'hyperframes' ? 'Automatically matched to motion; quieter under narration' : 'Quiet score; cues only for visible actions'}</small></label>
           {engine === 'hyperframes' && <label className="video-sound"><input type="checkbox" checked={Boolean(form.music)}
-            onChange={event => update('music', event.target.checked)} /> Music <small>Original track generated for this film; cuts land on its beat</small></label>}
+            onChange={event => update('music', event.target.checked)} /> Music <small>Automatically selects catalog music; generated fallback when unavailable</small></label>}
           <label className="video-sound"><input type="checkbox" checked={form.voice_over}
             onChange={event => update('voice_over', event.target.checked)} /> AI voice-over <small>Uses Gemini free-tier TTS quota; Malay or English narration</small></label>
           <p className="field-help">Standard quality uses more render compute.</p>
@@ -709,6 +711,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               </div>
               <FilmPreview html={filmPreview.html} width={filmPreview.width} height={filmPreview.height}
                 media={playerMedia} />
+              <AudioSelection selection={filmPreview.audio_selection} />
               <p className="field-help">{formatDuration(filmPreview.duration)} · {filmPreview.beats.length} beats · planned by {filmPreview.planner_model}. Fonts may differ slightly until rendered.{[form.music ? 'Music' : '', form.voice_over ? 'Voice-over' : ''].filter(Boolean).join(' and ') ? ` ${[form.music ? 'Music' : '', form.voice_over ? 'voice-over' : ''].filter(Boolean).join(' and ')} ${form.music && form.voice_over ? 'are' : 'is'} added in the render.` : ''}</p>
               <ol className="film-beats">{filmPreview.beats.map((beat, index) => <li key={index}>
                 <small>{FILM_BLOCK_LABELS[beat.block]} · {beat.start.toFixed(1)}s</small>
@@ -735,6 +738,7 @@ export function VideoView({ settings }: { settings: ChatSettings }) {
               </div>
               <div className="video-progress-label"><span>{job?.stage || (job ? VIDEO_STAGE_LABELS[job.status] : 'Checking status')}</span><b>{progress}%</b></div>
               <progress className="video-progress" value={progress} max={100} aria-label="Render progress" />
+              <AudioSelection selection={job?.audio_selection} />
               {job?.quality_report && <details className="film-editorial"><summary>Render checks</summary>
                 <p>{job.quality_report.samples} scene samples inspected. {job.quality_report.output?.ok ? 'MP4 duration and shape verified.' : ''}</p>
                 {job.quality_report.warnings.length > 0 ? <ul>{job.quality_report.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>

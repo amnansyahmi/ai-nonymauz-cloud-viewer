@@ -284,6 +284,7 @@ export interface VideoPreviewResponse {
   duration: number;
   transitions: string[];
   editorial_notes?: string[];
+  audio_selection?: VideoAudioSelection;
   beats: Array<{ block: FilmBlock; start: number; end: number; headline: string;
     narrative_role?: string; visual_action?: string; composition?: string }>;
   /** Background music to synthesise for the player (POST /v1/video/music). */
@@ -291,7 +292,23 @@ export interface VideoPreviewResponse {
   note?: string;
 }
 
+export interface VideoAudioCredit {
+  id: string;
+  title: string;
+  artist: string;
+  source_url: string;
+  license: string;
+}
+
+export interface VideoAudioSelection {
+  music: { source: 'catalog' | 'generated' | 'off' } & Partial<VideoAudioCredit>;
+  effects: Array<VideoAudioCredit & { event: string }>;
+  generated_effects: number;
+}
+
 export interface VideoMusicSpec {
+  track_id?: string | null;
+  track_sha256?: string | null;
   duration: number;
   bpm: number;
   energy: 'calm' | 'balanced' | 'energetic';
@@ -380,6 +397,7 @@ export interface VideoStoryboard {
 }
 
 export interface VideoJobResponse {
+  audio_selection?: VideoAudioSelection;
   job_id: string;
   status: VideoJobStatus;
   temporary?: boolean;
